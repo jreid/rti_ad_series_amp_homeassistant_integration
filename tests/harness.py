@@ -19,6 +19,7 @@ from __future__ import annotations
 import asyncio
 import time
 
+from homeassistant.helpers.update_coordinator import UpdateFailed
 from pytest_homeassistant_custom_component.common import MockEntityPlatform
 
 from custom_components.rti_ad4x import (
@@ -30,7 +31,6 @@ from custom_components.rti_ad4x import (
     number,
     protocol,
 )
-from homeassistant.helpers.update_coordinator import UpdateFailed
 
 __all__ = [
     "FakeServer",
@@ -93,7 +93,11 @@ class FakeAmp:
 
     def _status(self, zone):
         return protocol.ZoneStatus(
-            zone, self.power[zone], self.mute[zone], self.source[zone], -self.atten[zone]
+            zone,
+            self.power[zone],
+            self.mute[zone],
+            self.source[zone],
+            -self.atten[zone],
         )
 
     def _tone(self, zone):
@@ -227,7 +231,7 @@ class FakeServer:
                 else:
                     writer.write(f"#{zone},1,0,01,-29\r\n".encode())
                 await writer.drain()
-        except Exception:  # noqa: BLE001 - client went away
+        except Exception:  # noqa: BLE001, S110 - client went away
             pass
         finally:
             self.live -= 1

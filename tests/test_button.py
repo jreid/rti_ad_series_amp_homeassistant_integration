@@ -4,10 +4,10 @@ all-zones-off in one command.
 
 from __future__ import annotations
 
-from pytest_homeassistant_custom_component.common import MockConfigEntry
-
-from harness import button as btn, calls_of, const, make_coordinator, setup_platform_entry
+from harness import button as btn
+from harness import calls_of, const, make_coordinator, setup_platform_entry
 from homeassistant.helpers import entity_registry as er
+from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 # --------------------------------------------------------------------------
 # Device/entity wiring -- the hub device, not a zone device

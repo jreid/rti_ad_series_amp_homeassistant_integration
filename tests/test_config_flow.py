@@ -22,10 +22,11 @@ from __future__ import annotations
 import socket
 
 import pytest
+from harness import FakeServer, const
+from harness import protocol as p
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.rti_ad4x import config_flow as cf
-from harness import FakeServer, const, protocol as p
 
 
 async def _ok_validate(host, port):
@@ -172,7 +173,9 @@ async def test_user_step_aborts_when_the_amp_is_already_configured(hass, monkeyp
     assert result["reason"] == "already_configured"
 
 
-async def test_user_step_does_not_treat_a_different_amp_as_a_duplicate(hass, monkeypatch):
+async def test_user_step_does_not_treat_a_different_amp_as_a_duplicate(
+    hass, monkeypatch
+):
     monkeypatch.setattr(cf, "_validate_connection", _ok_validate)
     MockConfigEntry(domain=const.DOMAIN, unique_id="10.0.0.9:23").add_to_hass(hass)
     result = await hass.config_entries.flow.async_init(
@@ -257,7 +260,9 @@ async def test_reconfigure_step_reports_cannot_connect(hass, monkeypatch):
 
 
 async def test_options_flow_updates_zones_and_sources(hass):
-    entry = MockConfigEntry(domain=const.DOMAIN, data={"zones": 2, "sources": ["A", "B"]})
+    entry = MockConfigEntry(
+        domain=const.DOMAIN, data={"zones": 2, "sources": ["A", "B"]}
+    )
     entry.add_to_hass(hass)
     result = await hass.config_entries.options.async_init(entry.entry_id)
     result = await hass.config_entries.options.async_configure(

@@ -5,17 +5,20 @@ test_coordinator.py).
 
 from __future__ import annotations
 
-from pytest_homeassistant_custom_component.common import MockConfigEntry
-
 from harness import (
     calls_of,
     const,
     make_coordinator,
-    media_player as mp,
-    protocol as p,
     setup_platform_entry,
 )
+from harness import (
+    media_player as mp,
+)
+from harness import (
+    protocol as p,
+)
 from homeassistant.helpers import entity_registry as er
+from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 SOURCES = ["Chromecast", "Turntable"]
 
@@ -45,7 +48,9 @@ async def test_unique_id_is_scoped_to_entry_and_zone(hass):
     assert player._attr_unique_id == "entry1_zone_3"
 
 
-async def test_entity_has_no_name_suffix_since_it_is_the_zone_devices_primary_entity(hass):
+async def test_entity_has_no_name_suffix_since_it_is_the_zone_devices_primary_entity(
+    hass,
+):
     player, _, _ = _player(hass)
     assert player._attr_has_entity_name is True
     assert player._attr_name is None
@@ -157,7 +162,9 @@ async def test_all_zones_off_turns_off_every_zone_with_one_command(hass):
 # --------------------------------------------------------------------------
 
 
-async def test_setup_entry_creates_one_media_player_per_zone_and_registers_all_zones_off(hass):
+async def test_setup_entry_creates_one_media_player_per_zone_and_registers_all_zones_off(
+    hass,
+):
     coordinator, _ = make_coordinator(hass, zones=(1, 2))
     entry = MockConfigEntry(
         domain=const.DOMAIN, entry_id="entry1", data={"sources": SOURCES, "zones": 2}

@@ -6,11 +6,11 @@ from __future__ import annotations
 
 from dataclasses import replace
 
-from pytest_homeassistant_custom_component.common import MockConfigEntry
-
-from harness import calls_of, const, make_coordinator, number as num, setup_platform_entry
+from harness import calls_of, const, make_coordinator, setup_platform_entry
+from harness import number as num
 from homeassistant.components.number import NumberMode
 from homeassistant.helpers import entity_registry as er
+from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 
 def _number(hass, kind, zone=1, zones=(1, 2), powered=True):

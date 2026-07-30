@@ -11,8 +11,8 @@ import socket
 import time
 
 import pytest
-
-from harness import FakeServer, const, protocol as p, run, settle
+from harness import FakeServer, const, run, settle
+from harness import protocol as p
 
 # pytest-homeassistant-custom-component blocks real sockets by default (it
 # expects HA's own network calls to be mocked); the tests below deliberately
@@ -167,7 +167,7 @@ def test_describe_failure_names_contention_for_connection_errors():
 
 
 def test_describe_failure_names_a_timeout():
-    assert "timed out" in p._describe_failure(asyncio.TimeoutError())
+    assert "timed out" in p._describe_failure(TimeoutError())
 
 
 def test_describe_failure_falls_back_to_the_bare_error():

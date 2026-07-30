@@ -310,7 +310,7 @@ class RtiAd4xClient:
                     timeout=DEFAULT_CONNECT_TIMEOUT,
                 )
                 return
-            except (OSError, asyncio.TimeoutError) as err:
+            except (TimeoutError, OSError) as err:
                 last_err = err
                 # Treat a refusal as "busy": back off by the settle interval and
                 # try again, since only one client may be connected at a time.
@@ -379,7 +379,7 @@ class RtiAd4xClient:
             await self._ensure_connected()
             try:
                 return await self._write_and_read(command, expect_zone)
-            except (OSError, asyncio.TimeoutError) as err:
+            except (TimeoutError, OSError) as err:
                 last_err = err
         await self._close_connection()
         raise RtiAd4xError(

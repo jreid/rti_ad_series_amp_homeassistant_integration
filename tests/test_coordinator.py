@@ -9,7 +9,8 @@ from __future__ import annotations
 
 import asyncio
 
-from harness import UpdateFailed, calls_of, const, make_coordinator, protocol as p
+from harness import UpdateFailed, calls_of, const, make_coordinator
+from harness import protocol as p
 from homeassistant.exceptions import HomeAssistantError
 
 # --------------------------------------------------------------------------
@@ -111,11 +112,9 @@ async def test_setting_tone_to_flat_is_expressible(hass):
 
 
 async def test_volume_and_tone_in_one_batch_do_not_clobber_each_other(hass):
-    coord, amp = make_coordinator(hass, zones=(1,))
+    coord, _amp = make_coordinator(hass, zones=(1,))
     coord.data = await coord._async_update_data()
-    await asyncio.gather(
-        coord.async_set_volume(1, 0.5), coord.async_set_treble(1, 6)
-    )
+    await asyncio.gather(coord.async_set_volume(1, 0.5), coord.async_set_treble(1, 6))
     assert coord.data[1].status.volume_db == -35
     assert coord.data[1].tone.treble_db == 6
 
@@ -244,9 +243,13 @@ async def test_a_coalesced_failure_is_isolated_to_the_failing_zone(hass):
         return "ok"
 
     zone_1_result, zone_2_result = await asyncio.gather(set_zone(1), set_zone(2))
-    assert zone_1_result == "raised", "the zone whose command actually failed must see it"
+    assert zone_1_result == "raised", (
+        "the zone whose command actually failed must see it"
+    )
     assert zone_2_result == "ok", "a sibling zone's success must not be caught up in it"
-    assert amp.atten[2] == p.volume_level_to_attenuation(0.9), "zone 2's command still landed"
+    assert amp.atten[2] == p.volume_level_to_attenuation(0.9), (
+        "zone 2's command still landed"
+    )
 
 
 # --------------------------------------------------------------------------
@@ -271,4 +274,6 @@ async def test_cancel_pending_cancels_an_in_flight_flush(hass):
         await task
     except asyncio.CancelledError:
         pass
-    assert task.cancelled(), "the in-flight flush must actually be cancelled, not just forgotten"
+    assert task.cancelled(), (
+        "the in-flight flush must actually be cancelled, not just forgotten"
+    )

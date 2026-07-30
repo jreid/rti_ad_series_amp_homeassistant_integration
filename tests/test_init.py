@@ -10,12 +10,12 @@ reload are all exercised for real.
 from __future__ import annotations
 
 import pytest
+from harness import FakeServer, const
+from harness import coordinator as coord_mod
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.const import CONF_HOST, CONF_PORT
 from homeassistant.helpers import device_registry as dr
 from pytest_homeassistant_custom_component.common import MockConfigEntry
-
-from harness import FakeServer, const, coordinator as coord_mod
 
 pytestmark = pytest.mark.usefixtures("socket_enabled")
 

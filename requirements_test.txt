@@ -6,3 +6,11 @@
 # whenever that upgrade requires it. This also pulls in the matching
 # homeassistant core and pytest-asyncio.
 pytest-homeassistant-custom-component==0.13.317
+
+# Static analysis, run both locally via .pre-commit-config.yaml and in CI
+# (.github/workflows/lint.yml). Pinned so local runs, pre-commit, and CI all
+# check against the exact same versions; bump deliberately alongside the
+# pre-commit config's `rev:` for ruff-pre-commit when moving to a new ruff
+# release.
+mypy==2.3.0
+ruff==0.16.0

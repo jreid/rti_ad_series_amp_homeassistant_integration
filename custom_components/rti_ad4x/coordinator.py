@@ -177,7 +177,9 @@ class RtiAd4xCoordinator(DataUpdateCoordinator[dict[int, ZoneData]]):
             try:
                 await self.client.all_zones_off()
             except RtiAd4xError as err:
-                raise HomeAssistantError(f"Could not turn off all zones: {err}") from err
+                raise HomeAssistantError(
+                    f"Could not turn off all zones: {err}"
+                ) from err
         data = {
             zone: replace(entry, status=replace(entry.status, power=False))
             for zone, entry in (self.data or {}).items()
@@ -275,7 +277,7 @@ class RtiAd4xCoordinator(DataUpdateCoordinator[dict[int, ZoneData]]):
         await asyncio.sleep(COMMAND_COALESCE_WINDOW)
         # Drain in a loop: anything queued while commands are on the wire is
         # picked up by the next pass instead of being silently dropped.
-        while (batch := self._claim_pending()):
+        while batch := self._claim_pending():
             await self._async_send_batch(batch)
 
     def _zone_is_on(self, zone: int) -> bool:
