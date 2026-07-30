@@ -6,13 +6,12 @@ from typing import Literal
 
 from homeassistant.components.number import NumberEntity, NumberMode
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import RtiAd4xConfigEntry
-from .const import CONF_ZONES, DOMAIN, MAX_TONE_DB, MIN_TONE_DB, TONE_STEP_DB
+from .const import CONF_ZONES, MAX_TONE_DB, MIN_TONE_DB, TONE_STEP_DB
 from .coordinator import RtiAd4xCoordinator
+from .entity import RtiAd4xZoneEntity
 
 PARALLEL_UPDATES = 1
 
@@ -34,10 +33,9 @@ async def async_setup_entry(
     )
 
 
-class RtiAd4xToneNumber(CoordinatorEntity[RtiAd4xCoordinator], NumberEntity):
+class RtiAd4xToneNumber(RtiAd4xZoneEntity, NumberEntity):
     """A zone's treble or bass control, read back from the amplifier."""
 
-    _attr_has_entity_name = True
     _attr_native_unit_of_measurement = "dB"
     _attr_native_min_value = MIN_TONE_DB
     _attr_native_max_value = MAX_TONE_DB
@@ -51,16 +49,9 @@ class RtiAd4xToneNumber(CoordinatorEntity[RtiAd4xCoordinator], NumberEntity):
         zone: int,
         kind: ToneKind,
     ) -> None:
-        super().__init__(coordinator)
-        self._zone = zone
+        super().__init__(coordinator, entry, zone, unique_id_suffix=f"_{kind}")
         self._kind = kind
-        self._attr_unique_id = f"{entry.entry_id}_zone_{zone}_{kind}"
         self._attr_translation_key = kind
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, f"{entry.entry_id}_zone_{zone}")},
-            via_device=(DOMAIN, entry.entry_id),
-            name=f"Zone {zone}",
-        )
 
     @property
     def native_value(self) -> float | None:

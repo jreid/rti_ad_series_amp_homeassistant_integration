@@ -1,0 +1,8 @@
+# Pins the closest release to homeassistant==2026.3.0, the latest GA release
+# at the time this was last bumped (pytest-homeassistant-custom-component
+# didn't cut a build for that exact patch, so this is the nearest one,
+# 2026.3.1). Bump this as new GA releases ship to keep tests running against
+# a current Home Assistant, and raise manifest.json's min_ha_version to match
+# whenever that upgrade requires it. This also pulls in the matching
+# homeassistant core and pytest-asyncio.
+pytest-homeassistant-custom-component==0.13.317

@@ -155,6 +155,14 @@ Configure button without removing it; lowering the zone count removes the
 now-unused zone devices and entities. If the amplifier's host or port
 changes, use Reconfigure instead of deleting and re-adding the integration.
 
+## Removal
+
+Settings > Devices & Services > "RTI AD-4x" > Delete. This removes the
+config entry along with its devices and entities; the amplifier itself is
+unaffected and can be re-added later. To also remove the integration's
+files, delete `config/custom_components/rti_ad4x/` and restart Home
+Assistant.
+
 ## Tone control
 
 Each zone device has `number.treble` and `number.bass` entities (-12 to
@@ -183,17 +191,19 @@ target:
 ## Tests
 
 ```bash
-python3 tests/run_tests.py     # no dependencies
-pytest tests/                  # same tests, if you have pytest
+pip install -r requirements_test.txt
+pytest tests/
 ```
 
-They stub out the few Home Assistant symbols the code touches and talk to a
-fake amplifier over a real socket, so no hardware is needed. Most assertions
-pin down protocol behaviour that was expensive to discover — the bass-before-
-treble field order, the exact attenuation ceiling, pacing, single-client port
-release, and power gating — plus regressions for bugs that shipped: a burst of
-presses landing on the wrong value, a press lost mid-flight, and tone being
-unsettable to flat.
+Tests run against the real `homeassistant` package (via
+[pytest-homeassistant-custom-component](https://github.com/MatthewFlamm/pytest-homeassistant-custom-component),
+pinned to the release built against this integration's `min_ha_version`) and
+a fake amplifier over a real socket, so no hardware is needed. Most
+assertions pin down protocol behaviour that was expensive to discover — the
+bass-before-treble field order, the exact attenuation ceiling, pacing,
+single-client port release, and power gating — plus regressions for bugs
+that shipped: a burst of presses landing on the wrong value, a press lost
+mid-flight, and tone being unsettable to flat.
 
 ## Attribution
 

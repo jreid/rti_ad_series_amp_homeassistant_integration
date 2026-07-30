@@ -8,6 +8,7 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, replace
 
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .const import COMMAND_COALESCE_WINDOW, DOMAIN, POLL_FAILURE_TOLERANCE
@@ -99,6 +100,7 @@ class RtiAd4xCoordinator(DataUpdateCoordinator[dict[int, ZoneData]]):
         self._lock = asyncio.Lock()
         self._pending: dict[int, _Pending] = {z: _Pending() for z in zones}
         self._flush_task: asyncio.Task[None] | None = None
+        self._flush_errors: dict[int, RtiAd4xError] = {}
         self._consecutive_failures = 0
 
     async def _async_update_data(self) -> dict[int, ZoneData]:
@@ -149,7 +151,10 @@ class RtiAd4xCoordinator(DataUpdateCoordinator[dict[int, ZoneData]]):
     ) -> ZoneStatus:
         """Run a command that returns zone status, and publish the new state."""
         async with self._lock:
-            status = await action(zone, *args)
+            try:
+                status = await action(zone, *args)
+            except RtiAd4xError as err:
+                raise HomeAssistantError(f"Zone {zone}: {err}") from err
         data = dict(self.data or {})
         existing = data.get(zone)
         data[zone] = (
@@ -169,7 +174,10 @@ class RtiAd4xCoordinator(DataUpdateCoordinator[dict[int, ZoneData]]):
         zones just to learn what we already know.
         """
         async with self._lock:
-            await self.client.all_zones_off()
+            try:
+                await self.client.all_zones_off()
+            except RtiAd4xError as err:
+                raise HomeAssistantError(f"Could not turn off all zones: {err}") from err
         data = {
             zone: replace(entry, status=replace(entry.status, power=False))
             for zone, entry in (self.data or {}).items()
@@ -200,26 +208,26 @@ class RtiAd4xCoordinator(DataUpdateCoordinator[dict[int, ZoneData]]):
         )
         pending.volume_target = max(0.0, min(1.0, base + steps * VOLUME_STEP_LEVEL))
         pending.volume_dirty = True
-        await self._async_flush_soon()
+        await self._async_flush_soon(zone)
 
     async def async_set_volume(self, zone: int, level: float) -> None:
         """Set an absolute volume level; last writer within the window wins."""
         pending = self._pending[zone]
         pending.volume_target = max(0.0, min(1.0, level))
         pending.volume_dirty = True
-        await self._async_flush_soon()
+        await self._async_flush_soon(zone)
 
     async def async_set_mute(self, zone: int, mute: bool) -> None:
         self._pending[zone].mute = mute
-        await self._async_flush_soon()
+        await self._async_flush_soon(zone)
 
     async def async_set_treble(self, zone: int, db: int) -> None:
         self._pending[zone].treble = db
-        await self._async_flush_soon()
+        await self._async_flush_soon(zone)
 
     async def async_set_bass(self, zone: int, db: int) -> None:
         self._pending[zone].bass = db
-        await self._async_flush_soon()
+        await self._async_flush_soon(zone)
 
     async def async_set_power(self, zone: int, on: bool) -> None:
         """Power a zone, then apply anything that was deferred while it was off."""
@@ -227,7 +235,7 @@ class RtiAd4xCoordinator(DataUpdateCoordinator[dict[int, ZoneData]]):
             zone, self.client.power_on if on else self.client.power_off
         )
         if on and self._pending[zone].has_work():
-            await self._async_flush_soon()
+            await self._async_flush_soon(zone)
 
     # Requests deferred until a zone is powered on are still shown to the user,
     # so a slider or tone control reflects what they asked for rather than
@@ -246,13 +254,22 @@ class RtiAd4xCoordinator(DataUpdateCoordinator[dict[int, ZoneData]]):
     def pending_bass(self, zone: int) -> int | None:
         return self._pending[zone].bass
 
-    async def _async_flush_soon(self) -> None:
-        """Ensure a flush is scheduled, and wait for it to finish."""
+    async def _async_flush_soon(self, zone: int) -> None:
+        """Ensure a flush is scheduled, wait for it, then surface this zone's outcome.
+
+        The flush task is shared across every zone with pending work in the
+        same debounce window, so it can't raise for its own failures -- that
+        would fail every caller sharing the window, not just the one whose
+        zone actually broke. Each caller instead checks, after the shared
+        wait, whether its own zone came back with an error.
+        """
         if self._flush_task is None or self._flush_task.done():
             self._flush_task = self.hass.async_create_task(self._async_flush())
         # Shielded so one caller being cancelled cannot kill the flush that
         # other callers are also waiting on.
         await asyncio.shield(self._flush_task)
+        if (err := self._flush_errors.pop(zone, None)) is not None:
+            raise HomeAssistantError(f"Zone {zone}: {err}") from err
 
     async def _async_flush(self) -> None:
         await asyncio.sleep(COMMAND_COALESCE_WINDOW)
@@ -308,8 +325,9 @@ class RtiAd4xCoordinator(DataUpdateCoordinator[dict[int, ZoneData]]):
                     if work.bass is not None:
                         tone = await self.client.set_bass(zone, work.bass)
                         data = self._merge(data, zone, tone=tone)
-                except RtiAd4xError:
+                except RtiAd4xError as err:
                     _LOGGER.exception("Failed to apply adjustments for zone %s", zone)
+                    self._flush_errors[zone] = err
         self.async_set_updated_data(data)
 
     @staticmethod

@@ -367,25 +367,24 @@ class RtiAd4xClient:
 
     async def _exchange(self, command: str, expect_zone: int | None) -> str:
         loop = asyncio.get_running_loop()
-        await self._pace(loop)
-        await self._ensure_connected()
-        try:
-            return await self._write_and_read(command, expect_zone)
-        except (OSError, asyncio.TimeoutError):
-            # A connection held across a session may have gone bad server-side;
-            # drop it and retry once on a fresh one. Closing first discards any
-            # late reply still in the buffer, which keeps replies aligned with
-            # requests.
-            await self._close_connection()
+        last_err: Exception | None = None
+        for attempt in range(2):
+            if attempt:
+                # A connection held across a session may have gone bad server-side;
+                # drop it and retry once on a fresh one. Closing first discards any
+                # late reply still in the buffer, which keeps replies aligned with
+                # requests.
+                await self._close_connection()
             await self._pace(loop)
             await self._ensure_connected()
             try:
                 return await self._write_and_read(command, expect_zone)
             except (OSError, asyncio.TimeoutError) as err:
-                await self._close_connection()
-                raise RtiAd4xError(
-                    f"Command {command!r} failed: {_describe_failure(err)}"
-                ) from err
+                last_err = err
+        await self._close_connection()
+        raise RtiAd4xError(
+            f"Command {command!r} failed: {_describe_failure(last_err)}"
+        ) from last_err
 
     async def get_status(self, zone: int) -> ZoneStatus:
         return _parse_status_line(await self._send(f"ZN{zone:02d}STA", zone))

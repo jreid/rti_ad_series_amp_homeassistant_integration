@@ -10,7 +10,18 @@ import asyncio
 import socket
 import time
 
-from harness import const, protocol as p, run
+import pytest
+
+from harness import FakeServer, const, protocol as p, run, settle
+
+# pytest-homeassistant-custom-component blocks real sockets by default (it
+# expects HA's own network calls to be mocked); the tests below deliberately
+# talk to a real local TCP server standing in for the amplifier, unrelated to
+# HA, so they need it back. Must be the `socket_enabled` fixture rather than
+# the `enable_socket` marker: HA's plugin re-disables sockets from its own
+# pytest_runtest_setup hook, which runs after marker-based enabling but
+# before fixture setup, so only the fixture form actually sticks.
+pytestmark = pytest.mark.usefixtures("socket_enabled")
 
 # --------------------------------------------------------------------------
 # Volume scaling
@@ -126,6 +137,17 @@ def test_malformed_power_or_mute_field_is_rejected_not_read_as_off():
             raise AssertionError(f"{bad!r} should have been rejected")
 
 
+def test_non_numeric_zone_or_source_field_is_rejected():
+    # Passes the power/mute checks but fails the int() conversion further on.
+    for bad in ("#0X,1,0,01,-27", "#01,1,0,0X,-27", "#01,1,0,01,-2X"):
+        try:
+            p._parse_status_line(bad)
+        except p.RtiAd4xError:
+            pass
+        else:
+            raise AssertionError(f"{bad!r} should have been rejected")
+
+
 def test_reply_correlation_requires_matching_zone():
     assert p._is_direct_reply("#03,1,0,01,-20", 3)
     assert not p._is_direct_reply("#09,1,0,01,-20", 3), "foreign zone must be skipped"
@@ -135,66 +157,31 @@ def test_reply_correlation_requires_matching_zone():
 
 
 # --------------------------------------------------------------------------
+# Failure descriptions
+# --------------------------------------------------------------------------
+
+
+def test_describe_failure_names_contention_for_connection_errors():
+    assert "accepts only one" in p._describe_failure(ConnectionRefusedError())
+    assert "accepts only one" in p._describe_failure(ConnectionResetError())
+
+
+def test_describe_failure_names_a_timeout():
+    assert "timed out" in p._describe_failure(asyncio.TimeoutError())
+
+
+def test_describe_failure_falls_back_to_the_bare_error():
+    assert p._describe_failure(ValueError("odd failure")) == "odd failure"
+
+
+# --------------------------------------------------------------------------
 # Transport behaviour, against a fake amplifier on a real socket
 # --------------------------------------------------------------------------
 
 
-class _FakeServer:
-    """Serves the AD-4x line protocol; optionally single-client like the real one."""
-
-    def __init__(self, single_client=True, inject_foreign=False):
-        self.single_client = single_client
-        self.inject_foreign = inject_foreign
-        self.live = 0
-        self.peak = 0
-        self.accepted = 0
-        self.arrivals: list[float] = []
-
-    async def _handle(self, reader, writer):
-        if self.single_client and self.live > 0:
-            writer.close()
-            return
-        self.live += 1
-        self.accepted += 1
-        self.peak = max(self.peak, self.live)
-        try:
-            while True:
-                raw = await reader.readuntil(b"\r")  # commands end in bare \r
-                self.arrivals.append(time.monotonic())
-                cmd = raw.decode().strip().lstrip("*")
-                zone = cmd[2:4]
-                if self.inject_foreign:
-                    writer.write(b"#09,1,0,01,-11\r\n")
-                if "SET" in cmd:
-                    writer.write(f"${zone},+00,+06\r\n".encode())
-                elif "PWR" in cmd:
-                    writer.write(f"#{zone},1,0,01,-29\r\n".encode())
-                    writer.write(b"#ZNON01\r\n")  # unsolicited broadcast
-                else:
-                    writer.write(f"#{zone},1,0,01,-29\r\n".encode())
-                await writer.drain()
-        except Exception:  # noqa: BLE001 - client went away
-            pass
-        finally:
-            self.live -= 1
-
-    async def start(self):
-        self._server = await asyncio.start_server(self._handle, "127.0.0.1", 0)
-        return self._server.sockets[0].getsockname()[1]
-
-    def stop(self):
-        self._server.close()
-
-
-async def _settle():
-    """Let the server coroutine notice a client disconnect."""
-    for _ in range(5):
-        await asyncio.sleep(0)
-
-
 def test_commands_are_paced_to_the_amplifier_floor():
     async def go():
-        srv = _FakeServer()
+        srv = FakeServer()
         port = await srv.start()
         client = p.RtiAd4xClient("127.0.0.1", port)
         async with client.session():
@@ -212,14 +199,14 @@ def test_commands_are_paced_to_the_amplifier_floor():
 
 def test_one_shot_commands_release_the_port():
     async def go():
-        srv = _FakeServer()
+        srv = FakeServer()
         port = await srv.start()
         client = p.RtiAd4xClient("127.0.0.1", port)
         await client.get_status(1)
-        await _settle()
+        await settle()
         assert srv.live == 0, "socket still held after a one-shot command"
         await client.get_status(2)
-        await _settle()
+        await settle()
         assert srv.accepted == 2, "second one-shot should open a new connection"
         assert srv.peak == 1, "never more than one connection at a time"
         srv.stop()
@@ -229,7 +216,7 @@ def test_one_shot_commands_release_the_port():
 
 def test_session_shares_one_connection_then_releases():
     async def go():
-        srv = _FakeServer()
+        srv = FakeServer()
         port = await srv.start()
         client = p.RtiAd4xClient("127.0.0.1", port)
         async with client.session():
@@ -237,7 +224,7 @@ def test_session_shares_one_connection_then_releases():
                 await client.get_status(zone)
                 await client.get_tone_status(zone)
             assert srv.live == 1, "connection should be held for the session"
-        await _settle()
+        await settle()
         assert srv.accepted == 1, "8 commands must share one connection"
         assert srv.live == 0, "connection must be released on session exit"
         srv.stop()
@@ -247,7 +234,7 @@ def test_session_shares_one_connection_then_releases():
 
 def test_foreign_status_line_is_not_mistaken_for_our_reply():
     async def go():
-        srv = _FakeServer(inject_foreign=True)
+        srv = FakeServer(inject_foreign=True)
         port = await srv.start()
         client = p.RtiAd4xClient("127.0.0.1", port)
         assert (await client.get_status(3)).zone == 3
@@ -282,7 +269,7 @@ def test_refused_connection_is_retried_and_clearly_explained():
 
 def test_a_held_port_blocks_others_until_released():
     async def go():
-        srv = _FakeServer(single_client=True)
+        srv = FakeServer(single_client=True)
         port = await srv.start()
         holder = p.RtiAd4xClient("127.0.0.1", port)
         rival = p.RtiAd4xClient("127.0.0.1", port)
@@ -294,16 +281,156 @@ def test_a_held_port_blocks_others_until_released():
                 pass
             else:
                 raise AssertionError("rival should not get in while port is held")
-        await _settle()
+        await settle()
         assert (await rival.get_status(1)).zone == 1, "should connect once released"
         srv.stop()
 
     run(go())
 
 
-if __name__ == "__main__":
-    import sys
+# --------------------------------------------------------------------------
+# Client command methods -- wire format and reply parsing for each one.
+# These are only otherwise exercised through FakeAmp in the coordinator
+# tests, which never runs the real command strings past RtiAd4xClient.
+# --------------------------------------------------------------------------
 
-    import test_protocol
 
-    sys.exit(__import__("harness").main(test_protocol))
+def test_power_commands_wake_and_sleep_a_zone():
+    async def go():
+        srv = FakeServer()
+        port = await srv.start()
+        client = p.RtiAd4xClient("127.0.0.1", port)
+        async with client.session():
+            on = await client.power_on(1)
+            off = await client.power_off(1)
+        srv.stop()
+        assert on.zone == 1
+        assert off.zone == 1
+        # The PWR broadcast (#ZNON01) sent alongside each reply must be
+        # skipped, not mistaken for the next command's answer.
+        assert len(srv.arrivals) == 2
+
+    run(go())
+
+
+def test_set_source_sends_the_source_number():
+    async def go():
+        srv = FakeServer()
+        port = await srv.start()
+        client = p.RtiAd4xClient("127.0.0.1", port)
+        status = await client.set_source(2, 3)
+        srv.stop()
+        assert status.zone == 2
+
+    run(go())
+
+
+def test_set_mute_and_volume_level_and_steps():
+    async def go():
+        srv = FakeServer()
+        port = await srv.start()
+        client = p.RtiAd4xClient("127.0.0.1", port)
+        async with client.session():
+            assert (await client.set_mute(1, True)).zone == 1
+            assert (await client.set_volume_level(1, 0.5)).zone == 1
+            assert (await client.volume_up(1)).zone == 1
+            assert (await client.volume_down(1)).zone == 1
+        srv.stop()
+
+    run(go())
+
+
+def test_set_treble_and_bass_parse_the_tone_reply():
+    async def go():
+        srv = FakeServer()
+        port = await srv.start()
+        client = p.RtiAd4xClient("127.0.0.1", port)
+        async with client.session():
+            treble = await client.set_treble(1, 8)
+            bass = await client.set_bass(1, -2)
+        srv.stop()
+        assert treble.zone == 1
+        assert bass.zone == 1
+
+    run(go())
+
+
+def test_all_zones_off_expects_the_zalloff_reply():
+    async def go():
+        srv = FakeServer()
+        port = await srv.start()
+        client = p.RtiAd4xClient("127.0.0.1", port)
+        await client.all_zones_off()  # would raise if the reply weren't #ZALLOFF
+        srv.stop()
+
+    run(go())
+
+
+def test_all_zones_off_rejects_an_unexpected_reply():
+    async def go():
+        async def handle(reader, writer):
+            await reader.readuntil(b"\r")
+            writer.write(b"#01,1,0,01,-20\r\n")
+            await writer.drain()
+
+        server = await asyncio.start_server(handle, "127.0.0.1", 0)
+        port = server.sockets[0].getsockname()[1]
+        client = p.RtiAd4xClient("127.0.0.1", port)
+        try:
+            await client.all_zones_off()
+        except p.RtiAd4xError as err:
+            assert "Unexpected reply" in str(err)
+        else:
+            raise AssertionError("expected rejection of a non-ZALLOFF reply")
+        server.close()
+
+    run(go())
+
+
+# --------------------------------------------------------------------------
+# _write_and_read edge cases: a connection that goes quiet in different ways
+# --------------------------------------------------------------------------
+
+
+def test_connection_closed_without_a_reply_is_reported():
+    async def go():
+        async def handle(reader, writer):
+            await reader.readuntil(b"\r")
+            writer.close()
+
+        server = await asyncio.start_server(handle, "127.0.0.1", 0)
+        port = server.sockets[0].getsockname()[1]
+        client = p.RtiAd4xClient("127.0.0.1", port)
+        try:
+            await client.get_status(1)
+        except p.RtiAd4xError as err:
+            assert "closed" in str(err)
+        else:
+            raise AssertionError("expected a closed-connection failure")
+        server.close()
+
+    run(go())
+
+
+def test_no_reply_amid_a_flood_of_broadcasts_is_reported():
+    async def go():
+        async def handle(reader, writer):
+            await reader.readuntil(b"\r")
+            # Flood well past MAX_REPLY_LINES with lines that never look like
+            # a direct reply, so the read loop gives up rather than hanging.
+            for _ in range(const.MAX_REPLY_LINES + 5):
+                writer.write(b"#ZNON01\r\n")
+            await writer.drain()
+
+        server = await asyncio.start_server(handle, "127.0.0.1", 0)
+        port = server.sockets[0].getsockname()[1]
+        client = p.RtiAd4xClient("127.0.0.1", port)
+        try:
+            await client.get_status(1)
+        except p.RtiAd4xError as err:
+            assert "amid unsolicited output" in str(err)
+        else:
+            raise AssertionError("expected the reply-line cap to be enforced")
+        server.close()
+
+    run(go())

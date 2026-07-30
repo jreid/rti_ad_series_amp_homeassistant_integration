@@ -10,13 +10,12 @@ from homeassistant.components.media_player import (
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_platform
-from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import RtiAd4xConfigEntry
-from .const import CONF_SOURCES, CONF_ZONES, DOMAIN, SERVICE_ALL_ZONES_OFF
+from .const import CONF_SOURCES, CONF_ZONES, SERVICE_ALL_ZONES_OFF
 from .coordinator import RtiAd4xCoordinator
+from .entity import RtiAd4xZoneEntity
 from .protocol import ZoneStatus
 
 PARALLEL_UPDATES = 1
@@ -57,10 +56,9 @@ async def async_setup_entry(
     )
 
 
-class RtiAd4xZoneMediaPlayer(CoordinatorEntity[RtiAd4xCoordinator], MediaPlayerEntity):
+class RtiAd4xZoneMediaPlayer(RtiAd4xZoneEntity, MediaPlayerEntity):
     """One RTI AD-4x zone, exposed as a media player."""
 
-    _attr_has_entity_name = True
     _attr_name = None  # primary entity of the zone device; no name suffix
     _attr_device_class = MediaPlayerDeviceClass.SPEAKER
     _attr_supported_features = SUPPORTED_FEATURES
@@ -72,15 +70,8 @@ class RtiAd4xZoneMediaPlayer(CoordinatorEntity[RtiAd4xCoordinator], MediaPlayerE
         zone: int,
         sources: list[str],
     ) -> None:
-        super().__init__(coordinator)
-        self._zone = zone
+        super().__init__(coordinator, entry, zone)
         self._sources = sources
-        self._attr_unique_id = f"{entry.entry_id}_zone_{zone}"
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, f"{entry.entry_id}_zone_{zone}")},
-            via_device=(DOMAIN, entry.entry_id),
-            name=f"Zone {zone}",
-        )
 
     @property
     def _status(self) -> ZoneStatus | None:
