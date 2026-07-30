@@ -1,0 +1,51 @@
+"""Constants for the RTI AD-4x integration."""
+
+DOMAIN = "rti_ad4x"
+
+CONF_ZONES = "zones"
+CONF_SOURCES = "sources"
+
+DEFAULT_PORT = 23
+DEFAULT_CONNECT_TIMEOUT = 3
+RESPONSE_TIMEOUT = 3
+
+# The amplifier accepts only ONE TCP client at a time, so a connection is held
+# no longer than a single logical operation (see RtiAd4xClient.session) and a
+# refused connect usually means "someone else is talking to it right now".
+CONNECTION_RECONNECT_SETTLE = 0.25
+MAX_CONNECT_ATTEMPTS = 3
+
+# Consecutive poll failures tolerated before entities are marked unavailable.
+# Contention with another client is expected and shouldn't blank the dashboard.
+POLL_FAILURE_TOLERANCE = 3
+
+# Upper bound on lines read while skipping broadcasts, so a chatty amplifier
+# can never keep a single exchange alive indefinitely.
+MAX_REPLY_LINES = 20
+
+# The amplifier silently drops commands that arrive faster than this, so the
+# client paces every exchange rather than trusting callers to behave.
+MIN_COMMAND_INTERVAL = 0.1
+
+# How long to gather rapid adjustments before sending a single command.
+COMMAND_COALESCE_WINDOW = 0.15
+
+MIN_ZONES = 1
+MAX_ZONES = 4
+DEFAULT_ZONES = 4
+DEFAULT_SOURCES = ["Source 1", "Source 2", "Source 3", "Source 4"]
+
+# There is no periodic polling. We are the amplifier's only writer, and every
+# command replies with the resulting state, so the cache cannot drift while
+# Home Assistant is running. State is read once at setup and maintained from
+# command replies; homeassistant.update_entity forces a re-read on demand.
+# This leaves the single control port free essentially all of the time.
+
+MIN_ATTENUATION_DB = 0
+MAX_ATTENUATION_DB = 70
+
+MIN_TONE_DB = -12
+MAX_TONE_DB = 12
+TONE_STEP_DB = 2
+
+SERVICE_ALL_ZONES_OFF = "all_zones_off"

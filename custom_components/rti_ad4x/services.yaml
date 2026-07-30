@@ -1,0 +1,8 @@
+all_zones_off:
+  name: All zones off
+  description: >-
+    Turn off every zone on the amplifier that the targeted zone belongs to.
+  target:
+    entity:
+      integration: rti_ad4x
+      domain: media_player

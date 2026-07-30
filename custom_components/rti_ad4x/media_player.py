@@ -1,0 +1,155 @@
+"""Media player entities for the RTI AD-4x integration, one per zone."""
+
+from __future__ import annotations
+
+from homeassistant.components.media_player import (
+    MediaPlayerDeviceClass,
+    MediaPlayerEntity,
+    MediaPlayerEntityFeature,
+    MediaPlayerState,
+)
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers import entity_platform
+from homeassistant.helpers.entity import DeviceInfo
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
+
+from . import RtiAd4xConfigEntry
+from .const import CONF_SOURCES, CONF_ZONES, DOMAIN, SERVICE_ALL_ZONES_OFF
+from .coordinator import RtiAd4xCoordinator
+from .protocol import ZoneStatus
+
+PARALLEL_UPDATES = 1
+
+SUPPORTED_FEATURES = (
+    MediaPlayerEntityFeature.TURN_ON
+    | MediaPlayerEntityFeature.TURN_OFF
+    | MediaPlayerEntityFeature.VOLUME_SET
+    | MediaPlayerEntityFeature.VOLUME_STEP
+    | MediaPlayerEntityFeature.VOLUME_MUTE
+    | MediaPlayerEntityFeature.SELECT_SOURCE
+)
+
+
+async def async_setup_entry(
+    hass: HomeAssistant,
+    entry: RtiAd4xConfigEntry,
+    async_add_entities: AddEntitiesCallback,
+) -> None:
+    coordinator = entry.runtime_data
+    sources: list[str] = entry.options.get(CONF_SOURCES, entry.data[CONF_SOURCES])
+    zones: int = entry.options.get(CONF_ZONES, entry.data[CONF_ZONES])
+
+    async_add_entities(
+        RtiAd4xZoneMediaPlayer(coordinator, entry, zone, sources)
+        for zone in range(1, zones + 1)
+    )
+
+    # Entity service rather than a domain service: HA resolves the target to
+    # the entity objects themselves, so the call reaches the right amplifier
+    # even with several configured, targeting by area or device works, and the
+    # registration is torn down with the platform. Kept as a service (rather
+    # than e.g. a switch) because it's one command instead of four separate
+    # zone-off calls, which matters at the amplifier's 100 ms command pacing.
+    platform = entity_platform.async_get_current_platform()
+    platform.async_register_entity_service(
+        SERVICE_ALL_ZONES_OFF, None, "async_all_zones_off"
+    )
+
+
+class RtiAd4xZoneMediaPlayer(CoordinatorEntity[RtiAd4xCoordinator], MediaPlayerEntity):
+    """One RTI AD-4x zone, exposed as a media player."""
+
+    _attr_has_entity_name = True
+    _attr_name = None  # primary entity of the zone device; no name suffix
+    _attr_device_class = MediaPlayerDeviceClass.SPEAKER
+    _attr_supported_features = SUPPORTED_FEATURES
+
+    def __init__(
+        self,
+        coordinator: RtiAd4xCoordinator,
+        entry: RtiAd4xConfigEntry,
+        zone: int,
+        sources: list[str],
+    ) -> None:
+        super().__init__(coordinator)
+        self._zone = zone
+        self._sources = sources
+        self._attr_unique_id = f"{entry.entry_id}_zone_{zone}"
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, f"{entry.entry_id}_zone_{zone}")},
+            via_device=(DOMAIN, entry.entry_id),
+            name=f"Zone {zone}",
+        )
+
+    @property
+    def _status(self) -> ZoneStatus | None:
+        if (data := (self.coordinator.data or {}).get(self._zone)) is not None:
+            return data.status
+        return None
+
+    def _source_name(self, index: int) -> str:
+        if 1 <= index <= len(self._sources):
+            return self._sources[index - 1]
+        return f"Source {index}"
+
+    @property
+    def state(self) -> MediaPlayerState | None:
+        status = self._status
+        if status is None:
+            return None
+        return MediaPlayerState.ON if status.power else MediaPlayerState.OFF
+
+    @property
+    def volume_level(self) -> float | None:
+        if (pending := self.coordinator.pending_volume(self._zone)) is not None:
+            return pending
+        status = self._status
+        return status.volume_level if status else None
+
+    @property
+    def is_volume_muted(self) -> bool | None:
+        if (pending := self.coordinator.pending_mute(self._zone)) is not None:
+            return pending
+        status = self._status
+        return status.mute if status else None
+
+    @property
+    def source(self) -> str | None:
+        status = self._status
+        return self._source_name(status.source) if status else None
+
+    @property
+    def source_list(self) -> list[str]:
+        return list(self._sources)
+
+    async def async_turn_on(self) -> None:
+        await self.coordinator.async_set_power(self._zone, True)
+
+    async def async_turn_off(self) -> None:
+        await self.coordinator.async_set_power(self._zone, False)
+
+    async def async_set_volume_level(self, volume: float) -> None:
+        await self.coordinator.async_set_volume(self._zone, volume)
+
+    async def async_volume_up(self) -> None:
+        await self.coordinator.async_step_volume(self._zone, 1)
+
+    async def async_volume_down(self) -> None:
+        await self.coordinator.async_step_volume(self._zone, -1)
+
+    async def async_mute_volume(self, mute: bool) -> None:
+        await self.coordinator.async_set_mute(self._zone, mute)
+
+    async def async_select_source(self, source: str) -> None:
+        try:
+            index = self._sources.index(source) + 1
+        except ValueError:
+            return
+        await self.coordinator.async_send_zone_command(
+            self._zone, self.coordinator.client.set_source, index
+        )
+
+    async def async_all_zones_off(self) -> None:
+        """Turn off every zone on this entity's amplifier."""
+        await self.coordinator.async_all_zones_off()

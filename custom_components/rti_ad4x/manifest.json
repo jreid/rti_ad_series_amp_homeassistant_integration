@@ -1,0 +1,11 @@
+{
+  "domain": "rti_ad4x",
+  "name": "RTI AD-4x",
+  "codeowners": [],
+  "config_flow": true,
+  "documentation": "https://github.com/jreid/rti-ad4x-homeassistant-integration",
+  "integration_type": "device",
+  "iot_class": "local_polling",
+  "requirements": [],
+  "version": "0.1.0"
+}
