@@ -40,7 +40,7 @@ class RtiAd4xToneNumber(RtiAd4xZoneEntity, NumberEntity):
     _attr_native_min_value = MIN_TONE_DB
     _attr_native_max_value = MAX_TONE_DB
     _attr_native_step = TONE_STEP_DB
-    _attr_mode = NumberMode.BOX
+    _attr_mode = NumberMode.SLIDER
 
     def __init__(
         self,

@@ -9,6 +9,7 @@ from dataclasses import replace
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from harness import calls_of, const, make_coordinator, number as num, setup_platform_entry
+from homeassistant.components.number import NumberMode
 from homeassistant.helpers import entity_registry as er
 
 
@@ -30,6 +31,12 @@ async def test_device_info_matches_the_media_players_zone_device(hass):
     assert info["identifiers"] == {(const.DOMAIN, "entry1_zone_2")}
     assert info["via_device"] == (const.DOMAIN, "entry1")
     assert info["name"] == "Zone 2"
+
+
+async def test_slider_mode_is_centered_on_zero(hass):
+    entity, _, _ = _number(hass, "treble", zone=1)
+    assert entity._attr_mode == NumberMode.SLIDER
+    assert entity._attr_native_min_value == -entity._attr_native_max_value
 
 
 async def test_unique_id_and_translation_key_are_kind_specific(hass):
