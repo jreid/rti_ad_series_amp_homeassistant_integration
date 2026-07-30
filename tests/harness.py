@@ -22,6 +22,7 @@ import time
 from pytest_homeassistant_custom_component.common import MockEntityPlatform
 
 from custom_components.rti_ad4x import (
+    button,
     config_flow,
     const,
     coordinator,
@@ -34,6 +35,7 @@ from homeassistant.helpers.update_coordinator import UpdateFailed
 __all__ = [
     "FakeServer",
     "UpdateFailed",
+    "button",
     "calls_of",
     "config_flow",
     "const",

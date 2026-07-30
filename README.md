@@ -172,15 +172,15 @@ clamped and snapped to the amplifier's 2 dB granularity (5 becomes 4), which
 is encoded on the wire as 00-12 for 0 to +12 dB and 20-32 for 0 to -12 dB,
 confirmed against the `AET.RTI.ADx` Crestron module.
 
-## Services
+## All zones off
 
-### `rti_ad4x.all_zones_off`
+The amp hub device has a `button.all_zones_off` entity for turning off every
+zone with a single `*ZALLPWR00` command instead of four separate power-offs.
+Add it to a dashboard, or trigger it from an automation with
+`button.press`.
 
-An **entity service**: target a zone by entity, device, or area. Turns off
-every zone on the amplifier the targeted zone belongs to, using a single
-`*ZALLPWR00` command instead of four separate power-offs -- the one case left
-as a service rather than an entity, since it's one command instead of four at
-the amplifier's 100 ms command pacing. Handy for a leaving-home automation.
+The same action is also available as an entity service, for automations that
+already target a zone entity, device, or area rather than the hub:
 
 ```yaml
 action: rti_ad4x.all_zones_off

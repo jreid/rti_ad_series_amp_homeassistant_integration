@@ -52,6 +52,11 @@
       "bass": {
         "name": "Bass"
       }
+    },
+    "button": {
+      "all_zones_off": {
+        "name": "All zones off"
+      }
     }
   },
   "services": {

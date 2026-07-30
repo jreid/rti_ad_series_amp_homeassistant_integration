@@ -60,6 +60,7 @@ async def test_setup_entry_creates_coordinator_and_forwards_platforms(hass):
 
     assert len(hass.states.async_all("media_player")) == 2
     assert len(hass.states.async_all("number")) == 4  # treble + bass per zone
+    assert len(hass.states.async_all("button")) == 1  # all-zones-off, on the hub
 
     srv.stop()
 

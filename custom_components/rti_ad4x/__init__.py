@@ -11,7 +11,7 @@ from .const import CONF_ZONES, DOMAIN
 from .coordinator import RtiAd4xCoordinator
 from .protocol import RtiAd4xClient
 
-PLATFORMS = [Platform.MEDIA_PLAYER, Platform.NUMBER]
+PLATFORMS = [Platform.MEDIA_PLAYER, Platform.NUMBER, Platform.BUTTON]
 
 type RtiAd4xConfigEntry = ConfigEntry[RtiAd4xCoordinator]
 
@@ -29,9 +29,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: RtiAd4xConfigEntry) -> b
     entry.async_on_unload(entry.add_update_listener(_async_update_listener))
 
     device_registry = dr.async_get(hass)
-    # The amp itself has no entities of its own -- it exists only as the
-    # via_device parent for each zone device -- so nothing else would ever
-    # register it.
+    # The amp device is also the via_device parent for each zone device, so it
+    # must be created explicitly even though it now carries its own entity
+    # (the all-zones-off button) as well.
     device_registry.async_get_or_create(
         config_entry_id=entry.entry_id,
         identifiers={(DOMAIN, entry.entry_id)},
@@ -41,8 +41,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: RtiAd4xConfigEntry) -> b
     )
     _async_prune_stale_zone_devices(device_registry, entry.entry_id, zones)
 
-    # all_zones_off is registered by the media_player platform as an entity
-    # service; per-zone tone control lives on the number platform instead.
+    # all_zones_off is also registered by the media_player platform as an
+    # entity service, for automations that already target a zone entity;
+    # per-zone tone control lives on the number platform.
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True
 
