@@ -106,5 +106,16 @@
       "name": "All zones off",
       "description": "Turns off every zone on the amplifier that the targeted zone belongs to, using a single command."
     }
+  },
+  "exceptions": {
+    "zone_command_failed": {
+      "message": "Zone {zone} did not accept the command: {error}"
+    },
+    "zone_adjustment_failed": {
+      "message": "Zone {zone} did not accept the adjustment: {error}"
+    },
+    "all_zones_off_failed": {
+      "message": "Could not turn off all zones: {error}"
+    }
   }
 }
