@@ -49,7 +49,7 @@ async def test_unique_id_and_translation_key_are_kind_specific(hass):
 
 
 # --------------------------------------------------------------------------
-# native_value: read back from the amp, not the deleted platform's optimism
+# native_value: read back from the amp, not the last commanded value
 # --------------------------------------------------------------------------
 
 

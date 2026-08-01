@@ -73,10 +73,11 @@ class _Work:
 class RtiAdCoordinator(DataUpdateCoordinator[dict[int, ZoneData]]):
     """Holds zone and tone state for one amplifier.
 
-    There is no periodic polling: the amplifier has no other writer, and every
-    command answers with the resulting state, so the cache stays truthful once
-    read. State is fetched at setup and thereafter maintained from command
-    replies; ``homeassistant.update_entity`` forces a re-read.
+    There is no periodic polling: every command answers with the resulting
+    state, so the cache stays truthful once read for as long as nothing
+    outside Home Assistant changes a zone (see the README's "sole-writer
+    assumption"). State is fetched at setup and thereafter maintained from
+    command replies; ``homeassistant.update_entity`` forces a re-read.
 
     A lock wraps every exchange so only one is ever in flight, and each
     operation is bracketed in a client session so the amplifier's single

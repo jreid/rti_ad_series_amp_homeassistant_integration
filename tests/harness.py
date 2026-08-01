@@ -1,17 +1,14 @@
-"""Shared test helpers: the real `homeassistant` package plus a fake amplifier.
+"""Shared test helpers: Home Assistant plumbing plus a fake amplifier.
 
 Home Assistant itself comes from `pytest-homeassistant-custom-component`
 (see requirements_test.txt, pinned to the release built against the exact
-`homeassistant` version this integration declares as its `min_ha_version`).
-There is no HA stand-in here anymore -- once the real package is installed,
-`custom_components/rti_ad`'s own `from homeassistant... import ...` lines
-resolve normally, the same as they would inside a real HA install.
+`homeassistant` version this integration declares as its `min_ha_version`),
+so `custom_components/rti_ad`'s own `from homeassistant... import ...` lines
+resolve the same way they would inside an HA install.
 
-`FakeAmp` is unrelated to any of that: it's a fake of the physical AD-4x,
-reproducing behaviour measured on real hardware (absolute volume and source
-selection wake a powered-off zone; mute and tone commands are silently
-dropped, tone answering with a zone-status line, which the client surfaces
-as RtiAdZoneOffError).
+The amplifier is faked two ways: `FakeAmp` in process, standing in for the
+client's own callers, and `FakeServer` speaking the line protocol over a
+socket for the tests that exercise `RtiAdClient` itself.
 """
 
 from __future__ import annotations
@@ -51,7 +48,7 @@ __all__ = [
 
 
 class FakeAmp:
-    """An AD-4x stand-in reproducing the behaviour measured on real hardware.
+    """An AD-Nx stand-in reproducing the behaviour measured on hardware.
 
     Notably: absolute volume and source selection wake a powered-off zone,
     while mute and tone commands are silently dropped -- tone answering with a
@@ -189,11 +186,11 @@ class FakeAmp:
 
 
 class FakeServer:
-    """Serves the AD-4x line protocol over a real socket; optionally
-    single-client like the real one.
+    """Serves the AD-Nx line protocol over a socket; optionally single-client
+    like the amplifier.
 
-    Used wherever a test needs to exercise the real `RtiAdClient` (as
-    opposed to `FakeAmp`, which stands in for the client's own callers).
+    Used wherever a test needs to exercise `RtiAdClient` itself (as opposed
+    to `FakeAmp`, which stands in for the client's own callers).
     """
 
     def __init__(self, single_client=True, inject_foreign=False):
@@ -265,14 +262,13 @@ def run(coro):
 
 
 async def setup_platform_entry(hass, platform_module, domain, entry):
-    """Run `platform_module.async_setup_entry` behind a real EntityPlatform.
+    """Run `platform_module.async_setup_entry` inside an EntityPlatform context.
 
     Direct instantiation of an entity class (what most tests here do) never
     needs this. It's only for the couple of tests that exercise
     entity_platform.async_get_current_platform() or
-    async_register_entity_service(), both of which require a genuine
-    EntityPlatform context that a bare call to async_setup_entry doesn't
-    provide.
+    async_register_entity_service(), both of which require an EntityPlatform
+    context that a bare call to async_setup_entry doesn't provide.
     """
     platform = MockEntityPlatform(
         hass, platform_name=const.DOMAIN, domain=domain, platform=platform_module

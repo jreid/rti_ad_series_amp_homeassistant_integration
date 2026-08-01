@@ -30,8 +30,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: RtiAdConfigEntry) -> boo
 
     device_registry = dr.async_get(hass)
     # The amp device is also the via_device parent for each zone device, so it
-    # must be created explicitly even though it now carries its own entity
-    # (the all-zones-off button) as well.
+    # must be created explicitly rather than left to the entity that lives on
+    # it (the all-zones-off button) to bring into existence.
     device_registry.async_get_or_create(
         config_entry_id=entry.entry_id,
         identifiers={(DOMAIN, entry.entry_id)},

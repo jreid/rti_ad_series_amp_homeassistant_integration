@@ -2,13 +2,13 @@
 options steps, including the two-step (connection details -> per-source
 name/enabled) shape shared by setup and options.
 
-These drive the flow through the real `FlowManager`
+These drive the flow through `FlowManager`
 (`hass.config_entries.flow`/`.options`) rather than instantiating
-RtiAdConfigFlow/RtiAdOptionsFlow directly: real HA's ConfigFlow base
-class relies on the manager to populate `self.handler`, `self.context`, and
-`self.flow_id` before any step runs, so a bare instance can't be driven the
-way a hand-rolled stand-in could. An abort or form is a returned result
-(`result["type"] == "abort"`/`"form"`), same as the real self.async_abort().
+RtiAdConfigFlow/RtiAdOptionsFlow directly: the ConfigFlow base class
+relies on the manager to populate `self.handler`, `self.context`, and
+`self.flow_id` before any step runs, so a bare instance can't be driven at
+all. An abort or form arrives as a returned result
+(`result["type"] == "abort"`/`"form"`).
 
 config_flow.py does its own unique_id dedup (`_conflicting_entry`) rather
 than the framework's `_abort_if_unique_id_configured` helper: that helper

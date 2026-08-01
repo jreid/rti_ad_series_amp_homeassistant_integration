@@ -1,10 +1,10 @@
 """Tests for the top-level integration: setup, unload, and device pruning.
 
-These drive the real integration end to end -- `hass.config_entries.async_setup`/
-`async_unload`/`async_update_entry` against a real `FakeServer` standing in for
-the amplifier -- rather than calling `async_setup_entry` as a bare function, so
+These drive the integration end to end -- `hass.config_entries.async_setup`/
+`async_unload`/`async_update_entry` against a `FakeServer` standing in for the
+amplifier -- rather than calling `async_setup_entry` as a bare function, so
 platform forwarding, device registry wiring, and the update-listener-triggered
-reload are all exercised for real.
+reload are all exercised.
 """
 
 from __future__ import annotations
