@@ -251,15 +251,15 @@ pip install -r requirements_test.txt
 pytest tests/
 ```
 
-Tests run against the real `homeassistant` package (via
+Tests run against the `homeassistant` package (via
 [pytest-homeassistant-custom-component](https://github.com/MatthewFlamm/pytest-homeassistant-custom-component),
 pinned to the release built against this integration's `min_ha_version`) and
-a fake amplifier over a real socket, so no hardware is needed. Most
+a fake amplifier over a local socket, so no hardware is needed. Most
 assertions pin down protocol behaviour that was expensive to discover — the
 bass-before-treble field order, the exact attenuation ceiling, pacing,
-single-client port release, and power gating — plus regressions for bugs
-that shipped: a burst of presses landing on the wrong value, a press lost
-mid-flight, and tone being unsettable to flat.
+single-client port release, and power gating — plus the coordinator's
+contract under load: a burst of presses landing on the final value, no press
+lost mid-flight, and tone settable to flat.
 
 ## Attribution
 

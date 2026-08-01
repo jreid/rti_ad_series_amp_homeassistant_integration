@@ -1,4 +1,4 @@
-"""Test bootstrap: real Home Assistant, real pytest-asyncio, no HA stand-ins.
+"""Test bootstrap: import paths and custom-integration loading.
 
 `pytest-homeassistant-custom-component` registers itself as a pytest plugin
 (providing the `hass` fixture and friends) as soon as it's installed, so
@@ -9,7 +9,7 @@ nothing needs importing here for that. The two things this file does add:
   integrations are discovered by path, not imported as a regular package)
   and `harness` resolve regardless of where pytest is invoked from.
 - Enable custom-integration loading, needed by the handful of tests that
-  drive a real `EntityPlatform` (see harness.py's `setup_platform_entry`).
+  drive an `EntityPlatform` (see harness.py's `setup_platform_entry`).
 """
 
 from __future__ import annotations

@@ -44,11 +44,13 @@ MIN_SOURCES = 1
 MAX_SOURCES = 8
 DEFAULT_SOURCE_COUNT = 4
 
-# There is no periodic polling. We are the amplifier's only writer, and every
-# command replies with the resulting state, so the cache cannot drift while
-# Home Assistant is running. State is read once at setup and maintained from
-# command replies; homeassistant.update_entity forces a re-read on demand.
-# This leaves the single control port free essentially all of the time.
+# There is no periodic polling. Every command replies with the resulting
+# state, so the cache cannot drift as long as nothing else changes zone state
+# -- an assumption about the installation rather than something the hardware
+# enforces (see the README's "sole-writer assumption"). State is read once at
+# setup and maintained from command replies; homeassistant.update_entity
+# forces a re-read on demand. This leaves the single control port free
+# essentially all of the time.
 
 MAX_ATTENUATION_DB = 70
 

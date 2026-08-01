@@ -72,8 +72,7 @@ async def _validate_connection(host: str, port: int) -> None:
 async def _validate_or_set_error(host: str, port: int, errors: dict[str, str]) -> bool:
     """Try the connection, recording `cannot_connect` on failure.
 
-    Shared by async_step_user and async_step_reconfigure, which otherwise
-    duplicated this exact try/except.
+    Shared by async_step_user and async_step_reconfigure.
     """
     try:
         await _validate_connection(host, port)

@@ -1,8 +1,7 @@
 """Coordinator tests: coalescing, power gating, and contention handling.
 
-Several of these are regression tests for bugs that shipped, so they assert
-behaviour rather than implementation: a burst of presses must land on the right
-value, and a request must never silently vanish.
+These assert behaviour rather than implementation: a burst of presses must land
+on the right value, and a request must never silently vanish.
 """
 
 from __future__ import annotations
