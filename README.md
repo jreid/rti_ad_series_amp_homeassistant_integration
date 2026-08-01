@@ -1,4 +1,4 @@
-# RTI AD Series Amplifiers
+# RTI AD Series Amplifier HomeAssistant Integration
 
 A custom Home Assistant integration that controls an RTI AD-4x or AD-8x audio
 distribution amplifier directly over its Ethernet port -- no RTI control
