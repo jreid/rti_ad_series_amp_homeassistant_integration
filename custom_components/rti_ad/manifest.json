@@ -1,6 +1,6 @@
 {
   "domain": "rti_ad",
-  "name": "RTI AD Series Amplifiers",
+  "name": "RTI AD Series Amplifier",
   "codeowners": ["@jreid"],
   "config_flow": true,
   "documentation": "https://github.com/jreid/rti_ad_series_amp_homeassistant_integration",

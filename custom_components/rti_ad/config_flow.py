@@ -1,4 +1,4 @@
-"""Config flow for the RTI AD Series Amplifiers integration."""
+"""Config flow for the RTI AD Series Amplifier integration."""
 
 from __future__ import annotations
 
@@ -138,7 +138,7 @@ def _conflicting_entry(
 
 
 class RtiAdConfigFlow(ConfigFlow, domain=DOMAIN):
-    """Handle a config flow for RTI AD Series Amplifiers."""
+    """Handle a config flow for the RTI AD Series Amplifier integration."""
 
     VERSION = 1
 

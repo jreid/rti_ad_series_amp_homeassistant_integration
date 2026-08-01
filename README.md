@@ -179,7 +179,7 @@ config/
 
 ## Configuration
 
-Settings > Devices & Services > Add Integration > "RTI AD Series Amplifiers".
+Settings > Devices & Services > Add Integration > "RTI AD Series Amplifier".
 You'll be asked for:
 
 - **Name** -- shown as the amplifier's device name; defaults to "RTI AD Series

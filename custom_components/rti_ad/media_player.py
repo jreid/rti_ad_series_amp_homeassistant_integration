@@ -1,4 +1,4 @@
-"""Media player entities for the RTI AD Series Amplifiers integration, one per zone."""
+"""Media player entities for the RTI AD Series Amplifier integration, one per zone."""
 
 from __future__ import annotations
 

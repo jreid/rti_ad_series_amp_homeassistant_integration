@@ -1,4 +1,4 @@
-"""The RTI AD Series Amplifiers integration."""
+"""The RTI AD Series Amplifier integration."""
 
 from __future__ import annotations
 

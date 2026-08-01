@@ -1,4 +1,4 @@
-"""Constants for the RTI AD Series Amplifiers integration."""
+"""Constants for the RTI AD Series Amplifier integration."""
 
 DOMAIN = "rti_ad"
 

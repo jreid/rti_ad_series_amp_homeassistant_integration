@@ -1,4 +1,4 @@
-"""Data update coordinator for the RTI AD Series Amplifiers integration."""
+"""Data update coordinator for the RTI AD Series Amplifier integration."""
 
 from __future__ import annotations
 
