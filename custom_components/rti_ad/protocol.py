@@ -1,4 +1,4 @@
-"""Low-level protocol client for the RTI AD-4x audio amplifier.
+"""Low-level protocol client for the RTI AD-4x/8x audio amplifier family.
 
 The amplifier accepts ASCII commands over TCP port 23, terminated by a bare
 ``\\r``. Every command -- including read-only queries -- replies with a

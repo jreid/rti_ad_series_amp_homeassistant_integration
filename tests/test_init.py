@@ -55,7 +55,8 @@ async def test_setup_entry_creates_coordinator_and_forwards_platforms(hass):
     hub = device_registry.async_get_device(identifiers={(const.DOMAIN, entry.entry_id)})
     assert hub is not None
     assert hub.manufacturer == "RTI"
-    assert hub.model == "AD-4x"
+    # Not derived from zone count -- there's no such SKU as "AD-2x".
+    assert hub.model == "AD Series"
     assert len(_zone_devices(device_registry, entry.entry_id)) == 2
 
     assert len(hass.states.async_all("media_player")) == 2

@@ -1,4 +1,4 @@
-"""Shared base for entities belonging to one RTI AD-4x zone device."""
+"""Shared base for entities belonging to one RTI AD-Nx zone device."""
 
 from __future__ import annotations
 

@@ -1,9 +1,9 @@
 {
-  "domain": "rti_ad4x",
-  "name": "RTI AD-4x",
+  "domain": "rti_ad",
+  "name": "RTI AD Series Amplifiers",
   "codeowners": ["@jreid"],
   "config_flow": true,
-  "documentation": "https://github.com/jreid/rti-ad4x-homeassistant-integration",
+  "documentation": "https://github.com/jreid/rti_ad_series_amp_homeassistant_integration",
   "integration_type": "device",
   "iot_class": "local_polling",
   "min_ha_version": "2026.3.0",

@@ -1,4 +1,4 @@
-"""The RTI AD-4x integration."""
+"""The RTI AD Series Amplifiers integration."""
 
 from __future__ import annotations
 
@@ -37,7 +37,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: RtiAd4xConfigEntry) -> b
         identifiers={(DOMAIN, entry.entry_id)},
         name=entry.title,
         manufacturer="RTI",
-        model="AD-4x",
+        # Not f"AD-{zones}x": zone/source counts are configured independently
+        # of any real product SKU (see sources.py), so a count like 3 or 6
+        # doesn't correspond to an actual RTI model number.
+        model="AD Series",
     )
     _async_prune_stale_zone_devices(device_registry, entry.entry_id, zones)
 

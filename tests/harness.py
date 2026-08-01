@@ -4,7 +4,7 @@ Home Assistant itself comes from `pytest-homeassistant-custom-component`
 (see requirements_test.txt, pinned to the release built against the exact
 `homeassistant` version this integration declares as its `min_ha_version`).
 There is no HA stand-in here anymore -- once the real package is installed,
-`custom_components/rti_ad4x`'s own `from homeassistant... import ...` lines
+`custom_components/rti_ad`'s own `from homeassistant... import ...` lines
 resolve normally, the same as they would inside a real HA install.
 
 `FakeAmp` is unrelated to any of that: it's a fake of the physical AD-4x,
@@ -22,7 +22,7 @@ import time
 from homeassistant.helpers.update_coordinator import UpdateFailed
 from pytest_homeassistant_custom_component.common import MockEntityPlatform
 
-from custom_components.rti_ad4x import (
+from custom_components.rti_ad import (
     button,
     config_flow,
     const,

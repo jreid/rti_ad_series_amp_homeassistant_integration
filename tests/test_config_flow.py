@@ -1,5 +1,6 @@
-"""Config flow tests: source-string parsing, DNS-resolved unique_id, and the
-create/reconfigure/options steps.
+"""Config flow tests: DNS-resolved unique_id, and the create/reconfigure/
+options steps, including the two-step (connection details -> per-source
+name/enabled) shape shared by setup and options.
 
 These drive the flow through the real `FlowManager`
 (`hass.config_entries.flow`/`.options`) rather than instantiating
@@ -26,7 +27,17 @@ from harness import FakeServer, const
 from harness import protocol as p
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.rti_ad4x import config_flow as cf
+from custom_components.rti_ad import config_flow as cf
+
+
+def _schema_default(schema, field_name):
+    """A vol.Required marker compares equal to its plain key name, so this
+    finds the field among the schema's markers regardless of what default
+    value it was actually built with."""
+    for key in schema.schema:
+        if key == field_name:
+            return key.default()
+    raise KeyError(field_name)
 
 
 async def _ok_validate(host, port):
@@ -43,35 +54,49 @@ def _user_input(**overrides):
         "host": "127.0.0.1",
         "port": 23,
         "zones": 2,
-        "sources": "Chromecast, Turntable",
+        "source_count": 2,
     }
     data.update(overrides)
     return data
 
 
+def _sources_input(names_and_enabled):
+    data = {}
+    for i, (name, enabled) in enumerate(names_and_enabled, start=1):
+        data[f"source_{i}_name"] = name
+        data[f"source_{i}_enabled"] = enabled
+    return data
+
+
 def _existing_entry(*, unique_id="127.0.0.1:23", **data_overrides):
-    data = {"host": "127.0.0.1", "port": 23, "zones": 2, "sources": ["A", "B"]}
+    data = {
+        "host": "127.0.0.1",
+        "port": 23,
+        "zones": 2,
+        "sources": [{"name": "A", "enabled": True}, {"name": "B", "enabled": True}],
+    }
     data.update(data_overrides)
     return MockConfigEntry(domain=const.DOMAIN, data=data, unique_id=unique_id)
 
 
 # --------------------------------------------------------------------------
-# Pure helpers
+# _sources_schema / _sources_from_input
 # --------------------------------------------------------------------------
 
 
-def test_sources_round_trip_through_the_form_string():
-    sources = ["Chromecast", "Turntable", "AUX"]
-    assert cf._string_to_sources(cf._sources_to_string(sources)) == sources
+def test_sources_from_input_builds_ordered_source_list():
+    user_input = _sources_input([("Chromecast", True), ("Turntable", False)])
+    assert cf._sources_from_input(user_input, 2) == [
+        {"name": "Chromecast", "enabled": True},
+        {"name": "Turntable", "enabled": False},
+    ]
 
 
-def test_blank_sources_string_is_rejected():
-    try:
-        cf._string_to_sources("  ,  ,")
-    except ValueError:
-        pass
-    else:
-        raise AssertionError("blank source list should have been rejected")
+def test_sources_from_input_falls_back_to_a_placeholder_name_when_blank():
+    user_input = _sources_input([("  ", True)])
+    assert cf._sources_from_input(user_input, 1) == [
+        {"name": "Source 1", "enabled": True}
+    ]
 
 
 # --------------------------------------------------------------------------
@@ -126,7 +151,7 @@ async def test_resolve_unique_id_falls_back_to_the_typed_host_on_dns_failure():
 
 
 # --------------------------------------------------------------------------
-# async_step_user
+# async_step_user -> async_step_sources
 # --------------------------------------------------------------------------
 
 
@@ -137,22 +162,43 @@ async def test_user_step_shows_a_form_with_no_input(hass):
     assert result["step_id"] == "user"
 
 
-async def test_user_step_creates_an_entry_on_success(hass, monkeypatch):
+async def test_user_step_advances_to_the_sources_step_on_success(hass, monkeypatch):
     monkeypatch.setattr(cf, "_validate_connection", _ok_validate)
     result = await hass.config_entries.flow.async_init(
         const.DOMAIN, context={"source": "user"}, data=_user_input()
     )
+    assert result["step_id"] == "sources"
+    assert result["type"] == "form"
+
+
+async def test_sources_step_creates_an_entry_on_success(hass, monkeypatch):
+    monkeypatch.setattr(cf, "_validate_connection", _ok_validate)
+    result = await hass.config_entries.flow.async_init(
+        const.DOMAIN, context={"source": "user"}, data=_user_input()
+    )
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        _sources_input([("Chromecast", True), ("Turntable", True)]),
+    )
     assert result["title"] == "RTI AD-4x"
     assert result["data"]["host"] == "127.0.0.1"
-    assert result["data"]["sources"] == ["Chromecast", "Turntable"]
+    assert result["data"]["sources"] == [
+        {"name": "Chromecast", "enabled": True},
+        {"name": "Turntable", "enabled": True},
+    ]
     assert result["result"].unique_id == "127.0.0.1:23"
 
 
-async def test_user_step_reports_no_sources_error(hass):
+async def test_sources_step_reports_no_sources_enabled_error(hass, monkeypatch):
+    monkeypatch.setattr(cf, "_validate_connection", _ok_validate)
     result = await hass.config_entries.flow.async_init(
-        const.DOMAIN, context={"source": "user"}, data=_user_input(sources="   ,  ")
+        const.DOMAIN, context={"source": "user"}, data=_user_input()
     )
-    assert result["errors"] == {"sources": "no_sources"}
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        _sources_input([("Chromecast", False), ("Turntable", False)]),
+    )
+    assert result["errors"] == {"base": "no_sources_enabled"}
 
 
 async def test_user_step_reports_cannot_connect(hass, monkeypatch):
@@ -181,7 +227,7 @@ async def test_user_step_does_not_treat_a_different_amp_as_a_duplicate(
     result = await hass.config_entries.flow.async_init(
         const.DOMAIN, context={"source": "user"}, data=_user_input()
     )
-    assert result["type"] == "create_entry"
+    assert result["step_id"] == "sources"
 
 
 # --------------------------------------------------------------------------
@@ -259,24 +305,112 @@ async def test_reconfigure_step_reports_cannot_connect(hass, monkeypatch):
 # --------------------------------------------------------------------------
 
 
+async def test_options_flow_skips_the_sources_step_when_nothing_about_it_changed(hass):
+    entry = _existing_entry()  # sources: A, B (2)
+    entry.add_to_hass(hass)
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"zones": 3, "source_count": 2}
+    )
+    # Same source count, edit_sources left unchecked: a zones-only change
+    # shouldn't have to page through and resubmit the sources form.
+    assert result["type"] == "create_entry"
+    assert entry.options == {
+        "zones": 3,
+        "sources": [
+            {"name": "A", "enabled": True},
+            {"name": "B", "enabled": True},
+        ],
+    }
+
+
+async def test_options_flow_advances_to_the_sources_step_when_edit_sources_is_checked(
+    hass,
+):
+    entry = _existing_entry()
+    entry.add_to_hass(hass)
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"],
+        {"zones": 3, "source_count": 2, "edit_sources": True},
+    )
+    assert result["step_id"] == "sources"
+
+
 async def test_options_flow_updates_zones_and_sources(hass):
+    entry = _existing_entry()
+    entry.add_to_hass(hass)
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"],
+        {"zones": 3, "source_count": 2, "edit_sources": True},
+    )
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], _sources_input([("A", True), ("B", True)])
+    )
+    assert result["type"] == "create_entry"
+    assert entry.options == {
+        "zones": 3,
+        "sources": [
+            {"name": "A", "enabled": True},
+            {"name": "B", "enabled": True},
+        ],
+    }
+
+
+async def test_options_flow_reports_no_sources_enabled_error(hass):
+    entry = _existing_entry()
+    entry.add_to_hass(hass)
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"],
+        {"zones": 2, "source_count": 2, "edit_sources": True},
+    )
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], _sources_input([("A", False), ("B", False)])
+    )
+    assert result["errors"] == {"base": "no_sources_enabled"}
+
+
+async def test_options_flow_growing_source_count_keeps_existing_names(hass):
+    entry = _existing_entry()  # sources: A, B
+    entry.add_to_hass(hass)
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"zones": 2, "source_count": 3}
+    )
+    # Growing from 2 to 3 sources should default the new row's schema, with
+    # the first two rows still defaulted from the existing A/B names.
+    schema = result["data_schema"]
+    assert _schema_default(schema, "source_1_name") == "A"
+    assert _schema_default(schema, "source_2_name") == "B"
+    assert _schema_default(schema, "source_3_name") == "Source 3"
+
+
+async def test_options_flow_shrinking_source_count_drops_the_trailing_rows(hass):
+    entry = _existing_entry()  # sources: A, B
+    entry.add_to_hass(hass)
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"zones": 2, "source_count": 1}
+    )
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], _sources_input([("A", True)])
+    )
+    assert result["type"] == "create_entry"
+    assert entry.options["sources"] == [{"name": "A", "enabled": True}]
+
+
+async def test_options_flow_accepts_a_legacy_string_source_list(hass):
+    """Entries written by the old comma-separated field must still load."""
     entry = MockConfigEntry(
         domain=const.DOMAIN, data={"zones": 2, "sources": ["A", "B"]}
     )
     entry.add_to_hass(hass)
     result = await hass.config_entries.options.async_init(entry.entry_id)
+    assert result["step_id"] == "init"
     result = await hass.config_entries.options.async_configure(
-        result["flow_id"], {"zones": 3, "sources": "A, B, C"}
+        result["flow_id"],
+        {"zones": 2, "source_count": 2, "edit_sources": True},
     )
-    assert result["type"] == "create_entry"
-    assert entry.options == {"zones": 3, "sources": ["A", "B", "C"]}
-
-
-async def test_options_flow_reports_no_sources_error(hass):
-    entry = MockConfigEntry(domain=const.DOMAIN, data={"zones": 2, "sources": ["A"]})
-    entry.add_to_hass(hass)
-    result = await hass.config_entries.options.async_init(entry.entry_id)
-    result = await hass.config_entries.options.async_configure(
-        result["flow_id"], {"zones": 2, "sources": "   "}
-    )
-    assert result["errors"] == {"sources": "no_sources"}
+    assert result["step_id"] == "sources"

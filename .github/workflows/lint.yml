@@ -25,4 +25,4 @@ jobs:
         run: ruff check --target-version py314 custom_components tests
 
       - name: Type check (mypy)
-        run: mypy custom_components/rti_ad4x
+        run: mypy custom_components/rti_ad

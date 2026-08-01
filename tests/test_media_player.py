@@ -20,7 +20,10 @@ from harness import (
 from homeassistant.helpers import entity_registry as er
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-SOURCES = ["Chromecast", "Turntable"]
+SOURCES = [
+    {"name": "Chromecast", "enabled": True},
+    {"name": "Turntable", "enabled": True},
+]
 
 
 def _player(hass, zone=1, zones=(1, 2), powered=True):
@@ -95,7 +98,29 @@ async def test_source_maps_the_status_index_to_a_configured_name(hass):
     player, coordinator, _ = _player(hass, powered=True)
     coordinator.data = await coordinator._async_update_data()
     assert player.source == "Chromecast"
-    assert player.source_list == SOURCES
+    assert player.source_list == ["Chromecast", "Turntable"]
+
+
+async def test_source_list_excludes_disabled_sources(hass):
+    player, coordinator, _ = _player(hass, powered=True)
+    player._sources = [
+        {"name": "Chromecast", "enabled": True},
+        {"name": "Turntable", "enabled": False},
+    ]
+    coordinator.data = await coordinator._async_update_data()
+    assert player.source_list == ["Chromecast"]
+
+
+async def test_source_still_reports_a_currently_selected_but_disabled_source(hass):
+    player, coordinator, amp = _player(hass, powered=True)
+    player._sources = [
+        {"name": "Chromecast", "enabled": True},
+        {"name": "Turntable", "enabled": False},
+    ]
+    amp.source[1] = 2  # zone is on the now-disabled "Turntable"
+    coordinator.data = await coordinator._async_update_data()
+    assert player.source == "Turntable"
+    assert player.source_list == ["Chromecast"]
 
 
 async def test_unknown_source_index_falls_back_to_a_generic_name(hass):

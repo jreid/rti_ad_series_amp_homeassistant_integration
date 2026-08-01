@@ -1,0 +1,113 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect to RTI AD Series Amplifiers",
+        "description": "The amplifier accepts only one connection at a time, so Home Assistant reads its state at startup and then keeps it current from command replies rather than polling.",
+        "data": {
+          "name": "Name",
+          "host": "Host or IP address",
+          "port": "Port",
+          "zones": "Number of zones",
+          "source_count": "Number of sources"
+        }
+      },
+      "sources": {
+        "title": "Name your sources",
+        "description": "Uncheck a source to hide it from every zone's source list without losing its slot -- it can be re-enabled later without renumbering the others.",
+        "data": {
+          "source_1_name": "Source 1 name",
+          "source_1_enabled": "Source 1 enabled",
+          "source_2_name": "Source 2 name",
+          "source_2_enabled": "Source 2 enabled",
+          "source_3_name": "Source 3 name",
+          "source_3_enabled": "Source 3 enabled",
+          "source_4_name": "Source 4 name",
+          "source_4_enabled": "Source 4 enabled",
+          "source_5_name": "Source 5 name",
+          "source_5_enabled": "Source 5 enabled",
+          "source_6_name": "Source 6 name",
+          "source_6_enabled": "Source 6 enabled",
+          "source_7_name": "Source 7 name",
+          "source_7_enabled": "Source 7 enabled",
+          "source_8_name": "Source 8 name",
+          "source_8_enabled": "Source 8 enabled"
+        }
+      },
+      "reconfigure": {
+        "title": "Update RTI AD Series Amplifiers connection",
+        "description": "Update the host or port if the amplifier's network address has changed.",
+        "data": {
+          "host": "Host or IP address",
+          "port": "Port"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Could not connect. Check the host and port, and make sure nothing else is connected to the amplifier -- it accepts only one client at a time.",
+      "no_sources_enabled": "At least one source must be enabled."
+    },
+    "abort": {
+      "already_configured": "This amplifier is already configured.",
+      "reconfigure_successful": "Successfully updated the amplifier's connection details."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "RTI AD Series Amplifiers options",
+        "data": {
+          "zones": "Number of zones",
+          "source_count": "Number of sources",
+          "edit_sources": "Edit source names and enabled state"
+        }
+      },
+      "sources": {
+        "title": "Name your sources",
+        "description": "Uncheck a source to hide it from every zone's source list without losing its slot -- it can be re-enabled later without renumbering the others.",
+        "data": {
+          "source_1_name": "Source 1 name",
+          "source_1_enabled": "Source 1 enabled",
+          "source_2_name": "Source 2 name",
+          "source_2_enabled": "Source 2 enabled",
+          "source_3_name": "Source 3 name",
+          "source_3_enabled": "Source 3 enabled",
+          "source_4_name": "Source 4 name",
+          "source_4_enabled": "Source 4 enabled",
+          "source_5_name": "Source 5 name",
+          "source_5_enabled": "Source 5 enabled",
+          "source_6_name": "Source 6 name",
+          "source_6_enabled": "Source 6 enabled",
+          "source_7_name": "Source 7 name",
+          "source_7_enabled": "Source 7 enabled",
+          "source_8_name": "Source 8 name",
+          "source_8_enabled": "Source 8 enabled"
+        }
+      }
+    },
+    "error": {
+      "no_sources_enabled": "At least one source must be enabled."
+    }
+  },
+  "entity": {
+    "number": {
+      "treble": {
+        "name": "Treble"
+      },
+      "bass": {
+        "name": "Bass"
+      }
+    },
+    "button": {
+      "all_zones_off": {
+        "name": "All zones off"
+      }
+    }
+  },
+  "services": {
+    "all_zones_off": {
+      "name": "All zones off",
+      "description": "Turns off every zone on the amplifier that the targeted zone belongs to, using a single command."
+    }
+  }
+}

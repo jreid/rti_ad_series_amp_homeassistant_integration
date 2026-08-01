@@ -1,9 +1,15 @@
-"""Constants for the RTI AD-4x integration."""
+"""Constants for the RTI AD Series Amplifiers integration."""
 
-DOMAIN = "rti_ad4x"
+DOMAIN = "rti_ad"
 
 CONF_ZONES = "zones"
 CONF_SOURCES = "sources"
+# Transient config/options-flow field: how many source rows to render on the
+# next step. Never itself persisted -- only the resulting CONF_SOURCES is.
+CONF_SOURCE_COUNT = "source_count"
+# Transient options-flow field: force the sources step even when the source
+# count hasn't changed, so a zones-only edit doesn't have to page through it.
+CONF_EDIT_SOURCES = "edit_sources"
 
 DEFAULT_PORT = 23
 DEFAULT_CONNECT_TIMEOUT = 3
@@ -31,9 +37,12 @@ MIN_COMMAND_INTERVAL = 0.1
 COMMAND_COALESCE_WINDOW = 0.15
 
 MIN_ZONES = 1
-MAX_ZONES = 4
+MAX_ZONES = 8
 DEFAULT_ZONES = 4
-DEFAULT_SOURCES = ["Source 1", "Source 2", "Source 3", "Source 4"]
+
+MIN_SOURCES = 1
+MAX_SOURCES = 8
+DEFAULT_SOURCE_COUNT = 4
 
 # There is no periodic polling. We are the amplifier's only writer, and every
 # command replies with the resulting state, so the cache cannot drift while
@@ -41,7 +50,6 @@ DEFAULT_SOURCES = ["Source 1", "Source 2", "Source 3", "Source 4"]
 # command replies; homeassistant.update_entity forces a re-read on demand.
 # This leaves the single control port free essentially all of the time.
 
-MIN_ATTENUATION_DB = 0
 MAX_ATTENUATION_DB = 70
 
 MIN_TONE_DB = -12

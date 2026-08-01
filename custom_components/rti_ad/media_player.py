@@ -1,4 +1,4 @@
-"""Media player entities for the RTI AD-4x integration, one per zone."""
+"""Media player entities for the RTI AD Series Amplifiers integration, one per zone."""
 
 from __future__ import annotations
 
@@ -17,6 +17,7 @@ from .const import CONF_SOURCES, CONF_ZONES, SERVICE_ALL_ZONES_OFF
 from .coordinator import RtiAd4xCoordinator
 from .entity import RtiAd4xZoneEntity
 from .protocol import ZoneStatus
+from .sources import Source, normalize_sources
 
 PARALLEL_UPDATES = 1
 
@@ -36,7 +37,9 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     coordinator = entry.runtime_data
-    sources: list[str] = entry.options.get(CONF_SOURCES, entry.data[CONF_SOURCES])
+    sources = normalize_sources(
+        entry.options.get(CONF_SOURCES, entry.data[CONF_SOURCES])
+    )
     zones: int = entry.options.get(CONF_ZONES, entry.data[CONF_ZONES])
 
     async_add_entities(
@@ -57,7 +60,7 @@ async def async_setup_entry(
 
 
 class RtiAd4xZoneMediaPlayer(RtiAd4xZoneEntity, MediaPlayerEntity):
-    """One RTI AD-4x zone, exposed as a media player."""
+    """One RTI AD-Nx zone, exposed as a media player."""
 
     _attr_name = None  # primary entity of the zone device; no name suffix
     _attr_device_class = MediaPlayerDeviceClass.SPEAKER
@@ -68,7 +71,7 @@ class RtiAd4xZoneMediaPlayer(RtiAd4xZoneEntity, MediaPlayerEntity):
         coordinator: RtiAd4xCoordinator,
         entry: RtiAd4xConfigEntry,
         zone: int,
-        sources: list[str],
+        sources: list[Source],
     ) -> None:
         super().__init__(coordinator, entry, zone)
         self._sources = sources
@@ -81,7 +84,7 @@ class RtiAd4xZoneMediaPlayer(RtiAd4xZoneEntity, MediaPlayerEntity):
 
     def _source_name(self, index: int) -> str:
         if 1 <= index <= len(self._sources):
-            return self._sources[index - 1]
+            return self._sources[index - 1]["name"]
         return f"Source {index}"
 
     @property
@@ -112,7 +115,7 @@ class RtiAd4xZoneMediaPlayer(RtiAd4xZoneEntity, MediaPlayerEntity):
 
     @property
     def source_list(self) -> list[str]:
-        return list(self._sources)
+        return [s["name"] for s in self._sources if s["enabled"]]
 
     async def async_turn_on(self) -> None:
         await self.coordinator.async_set_power(self._zone, True)
@@ -133,9 +136,13 @@ class RtiAd4xZoneMediaPlayer(RtiAd4xZoneEntity, MediaPlayerEntity):
         await self.coordinator.async_set_mute(self._zone, mute)
 
     async def async_select_source(self, source: str) -> None:
-        try:
-            index = self._sources.index(source) + 1
-        except ValueError:
+        # Looked up against the full list, not just the enabled subset, so
+        # the physical source number sent to the amplifier is unaffected by
+        # which sources are currently hidden from the dropdown.
+        for index, s in enumerate(self._sources, start=1):
+            if s["name"] == source:
+                break
+        else:
             return
         await self.coordinator.async_send_zone_command(
             self._zone, self.coordinator.client.set_source, index

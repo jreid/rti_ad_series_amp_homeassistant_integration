@@ -1,8 +1,10 @@
-# RTI AD-4x Home Assistant Integration
+# RTI AD Series Amplifiers
 
-A custom Home Assistant integration that controls an RTI AD-4x audio
+A custom Home Assistant integration that controls an RTI AD-4x or AD-8x audio
 distribution amplifier directly over its Ethernet port -- no RTI control
-processor required.
+processor required. Zone count and source count are configured independently
+(1-8 each), so the same integration covers either model, or any wiring that
+doesn't use every zone or source.
 
 Each zone is its own device, holding a `media_player` entity (power, volume
 set/step, mute, source selection) plus `number.treble` and `number.bass`
@@ -31,8 +33,11 @@ Confirmed by direct testing against a real AD-4x:
   client reads until it sees something shaped like a direct reply and
   discards broadcasts, so these never get mistaken for the next command's
   response.
-- Unrecognized commands get `#?` back. Zones outside 1-4 get no reply at
-  all -- the AD-4x is a fixed 4-zone unit.
+- Unrecognized commands get `#?` back. Zones (or sources) outside what a
+  given unit actually has get no reply at all -- confirmed as 1-4 on a real
+  AD-4x. An AD-8x speaks the same protocol with 1-8 zones and sources
+  instead; the integration's zone/source count fields just need to match
+  whichever unit is connected.
 - **Commands must be spaced at least ~100 ms apart.** Anything faster is
   silently swallowed. `RtiAd4xClient` paces itself, so this holds no matter
   how fast callers ask for work.
@@ -118,12 +123,12 @@ Two details worth knowing if you touch this code:
 
 ## Installation
 
-Copy `custom_components/rti_ad4x/` into your Home Assistant `config/custom_components/` directory, then restart Home Assistant.
+Copy `custom_components/rti_ad/` into your Home Assistant `config/custom_components/` directory, then restart Home Assistant.
 
 ```
 config/
 └── custom_components/
-    └── rti_ad4x/
+    └── rti_ad/
         ├── __init__.py
         ├── manifest.json
         ├── const.py
@@ -140,28 +145,45 @@ config/
 
 ## Configuration
 
-Settings > Devices & Services > Add Integration > "RTI AD-4x". You'll be
-asked for:
+Settings > Devices & Services > Add Integration > "RTI AD Series Amplifiers".
+You'll be asked for:
 
-- **Name** -- shown as the amplifier's device name; defaults to "RTI AD-4x".
+- **Name** -- shown as the amplifier's device name; defaults to "RTI AD Series
+  Amplifier".
 - **Host** -- the amplifier's IP or hostname.
 - **Port** -- defaults to 23.
-- **Number of zones** -- 1-4.
-- **Source names** -- comma-separated, in source-number order (e.g.
-  `Chromecast, Turntable, AUX, Radio`).
+- **Number of zones** -- 1-8.
+- **Number of sources** -- 1-8.
 
-Zone count and source names can be changed later from the integration's
-Configure button without removing it; lowering the zone count removes the
-now-unused zone devices and entities. If the amplifier's host or port
-changes, use Reconfigure instead of deleting and re-adding the integration.
+A second step then shows one name + enabled row per source (e.g.
+`Chromecast`, `Turntable`, `AUX`, `Radio`). Unchecking a source hides it from
+every zone's source dropdown without losing its slot or renumbering the
+others -- useful for a source that's wired but not currently in use.
+
+Zone count, source count, and per-source names/enabled state can all be
+changed later from the integration's Configure button without removing it;
+lowering the zone count removes the now-unused zone devices and entities.
+Configure only asks for the source-naming step again when the source count
+actually changes, or when you tick "Edit source names and enabled state" --
+a zones-only change applies immediately without having to page through and
+resubmit every source row unchanged. Changing the source count keeps
+existing names/enabled state for the sources that still fit, and adds or
+drops rows at the end. If the amplifier's host or port changes, use
+Reconfigure instead of deleting and re-adding the integration.
+
+Zone *devices* (as opposed to sources) don't have a naming step in the flow
+-- they're created as "Zone 1", "Zone 2", etc. Give one a friendlier name
+(e.g. "Living Room") the same way as any other Home Assistant device:
+Settings > Devices & Services > Devices > that zone > the pencil/rename
+icon.
 
 ## Removal
 
-Settings > Devices & Services > "RTI AD-4x" > Delete. This removes the
-config entry along with its devices and entities; the amplifier itself is
-unaffected and can be re-added later. To also remove the integration's
-files, delete `config/custom_components/rti_ad4x/` and restart Home
-Assistant.
+Settings > Devices & Services > "RTI AD Series Amplifier" > Delete. This
+removes the config entry along with its devices and entities; the amplifier
+itself is unaffected and can be re-added later. To also remove the
+integration's files, delete `config/custom_components/rti_ad/` and restart
+Home Assistant.
 
 ## Tone control
 
@@ -183,9 +205,9 @@ The same action is also available as an entity service, for automations that
 already target a zone entity, device, or area rather than the hub:
 
 ```yaml
-action: rti_ad4x.all_zones_off
+action: rti_ad.all_zones_off
 target:
-  entity_id: media_player.rti_ad4x_zone_1
+  entity_id: media_player.zone_1
 ```
 
 ## Tests
@@ -213,3 +235,10 @@ Protocol reverse-engineering and tone encoding based on:
 
 The command set was verified against a real AD-4x; where this integration and
 the Crestron module differ, the hardware won.
+
+## Related projects
+
+- [srhunt-cyber/RTI-AD8x-Home-Assistant-bridge](https://github.com/srhunt-cyber/RTI-AD8x-Home-Assistant-bridge)
+  -- a different approach to the same problem: bridges an RTI AD-8x to Home
+  Assistant over MQTT rather than talking to the amplifier's TCP port
+  directly, aimed at multi-room audio alongside Sonos and Alexa.

@@ -13,16 +13,16 @@ repos:
       - id: mypy
         name: mypy
         # A local hook calling the repo's own venv, rather than the
-        # mirrors-mypy hook, because custom_components/rti_ad4x imports
+        # mirrors-mypy hook, because custom_components/rti_ad imports
         # homeassistant types: mirrors-mypy's isolated hook environment
         # doesn't have homeassistant installed, so it can't resolve those
         # imports. Running the venv's own mypy (which has
         # pytest-homeassistant-custom-component's homeassistant pulled in
         # via requirements_test.txt) gives it what it needs.
-        entry: .venv/bin/mypy custom_components/rti_ad4x
+        entry: .venv/bin/mypy custom_components/rti_ad
         language: system
         types: [python]
-        files: ^custom_components/rti_ad4x/
+        files: ^custom_components/rti_ad/
         pass_filenames: false
 
   - repo: https://github.com/pre-commit/pre-commit-hooks

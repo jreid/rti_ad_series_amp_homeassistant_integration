@@ -1,4 +1,4 @@
-"""Treble/bass number entities for the RTI AD-4x integration, one pair per zone."""
+"""Treble/bass number entities for the RTI AD Series Amplifiers integration, one pair per zone."""
 
 from __future__ import annotations
 
