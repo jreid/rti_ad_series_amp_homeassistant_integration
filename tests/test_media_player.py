@@ -26,10 +26,16 @@ SOURCES = [
 ]
 
 
-def _player(hass, zone=1, zones=(1, 2), powered=True):
+def _player(
+    hass,
+    zone=1,
+    zones=(1, 2),
+    powered=True,
+    device_class=mp.MediaPlayerDeviceClass.SPEAKER,
+):
     coordinator, amp = make_coordinator(hass, zones=zones, powered=powered)
     entry = MockConfigEntry(domain=const.DOMAIN, entry_id="entry1")
-    player = mp.RtiAdZoneMediaPlayer(coordinator, entry, zone, SOURCES)
+    player = mp.RtiAdZoneMediaPlayer(coordinator, entry, zone, SOURCES, device_class)
     return player, coordinator, amp
 
 
@@ -57,6 +63,16 @@ async def test_entity_has_no_name_suffix_since_it_is_the_zone_devices_primary_en
     player, _, _ = _player(hass)
     assert player._attr_has_entity_name is True
     assert player._attr_name is None
+
+
+async def test_device_class_defaults_to_speaker(hass):
+    player, _, _ = _player(hass)
+    assert player._attr_device_class == mp.MediaPlayerDeviceClass.SPEAKER
+
+
+async def test_device_class_can_be_configured_as_receiver(hass):
+    player, _, _ = _player(hass, device_class=mp.MediaPlayerDeviceClass.RECEIVER)
+    assert player._attr_device_class == mp.MediaPlayerDeviceClass.RECEIVER
 
 
 # --------------------------------------------------------------------------
@@ -206,3 +222,36 @@ async def test_setup_entry_creates_one_media_player_per_zone_and_registers_all_z
     )
     assert unique_ids == ["entry1_zone_1", "entry1_zone_2"]
     assert hass.services.has_service(const.DOMAIN, const.SERVICE_ALL_ZONES_OFF)
+
+
+async def test_setup_entry_defaults_zone_device_class_to_speaker_when_absent(hass):
+    # Covers an entry created before this option existed: no key at all in
+    # data, rather than the key being explicitly set to "speaker".
+    coordinator, _ = make_coordinator(hass, zones=(1,))
+    entry = MockConfigEntry(
+        domain=const.DOMAIN, entry_id="entry1", data={"sources": SOURCES, "zones": 1}
+    )
+    entry.runtime_data = coordinator
+    entry.add_to_hass(hass)
+
+    platform = await setup_platform_entry(hass, mp, "media_player", entry)
+
+    (player,) = platform.entities.values()
+    assert player._attr_device_class == mp.MediaPlayerDeviceClass.SPEAKER
+
+
+async def test_setup_entry_reads_zone_device_class_from_options_over_data(hass):
+    coordinator, _ = make_coordinator(hass, zones=(1,))
+    entry = MockConfigEntry(
+        domain=const.DOMAIN,
+        entry_id="entry1",
+        data={"sources": SOURCES, "zones": 1, "zone_device_class": "speaker"},
+        options={"zone_device_class": "receiver"},
+    )
+    entry.runtime_data = coordinator
+    entry.add_to_hass(hass)
+
+    platform = await setup_platform_entry(hass, mp, "media_player", entry)
+
+    (player,) = platform.entities.values()
+    assert player._attr_device_class == mp.MediaPlayerDeviceClass.RECEIVER

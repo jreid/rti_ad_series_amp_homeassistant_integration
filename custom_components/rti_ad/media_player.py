@@ -12,7 +12,13 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_platform
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
-from .const import CONF_SOURCES, CONF_ZONES, SERVICE_ALL_ZONES_OFF
+from .const import (
+    CONF_SOURCES,
+    CONF_ZONE_DEVICE_CLASS,
+    CONF_ZONES,
+    DEFAULT_ZONE_DEVICE_CLASS,
+    SERVICE_ALL_ZONES_OFF,
+)
 from .coordinator import RtiAdConfigEntry, RtiAdCoordinator
 from .entity import RtiAdZoneEntity
 from .protocol import ZoneStatus
@@ -41,9 +47,17 @@ async def async_setup_entry(
         entry.options.get(CONF_SOURCES, entry.data[CONF_SOURCES])
     )
     zones: int = entry.options.get(CONF_ZONES, entry.data[CONF_ZONES])
+    # .get(..., .get(..., DEFAULT)) rather than a bare data[...] lookup:
+    # entries created before this option existed have no key in data at all.
+    device_class = MediaPlayerDeviceClass(
+        entry.options.get(
+            CONF_ZONE_DEVICE_CLASS,
+            entry.data.get(CONF_ZONE_DEVICE_CLASS, DEFAULT_ZONE_DEVICE_CLASS),
+        )
+    )
 
     async_add_entities(
-        RtiAdZoneMediaPlayer(coordinator, entry, zone, sources)
+        RtiAdZoneMediaPlayer(coordinator, entry, zone, sources, device_class)
         for zone in range(1, zones + 1)
     )
 
@@ -63,7 +77,6 @@ class RtiAdZoneMediaPlayer(RtiAdZoneEntity, MediaPlayerEntity):
     """One RTI AD-Nx zone, exposed as a media player."""
 
     _attr_name = None  # primary entity of the zone device; no name suffix
-    _attr_device_class = MediaPlayerDeviceClass.SPEAKER
     _attr_supported_features = SUPPORTED_FEATURES
 
     def __init__(
@@ -72,10 +85,12 @@ class RtiAdZoneMediaPlayer(RtiAdZoneEntity, MediaPlayerEntity):
         entry: RtiAdConfigEntry,
         zone: int,
         sources: list[Source],
+        device_class: MediaPlayerDeviceClass,
     ) -> None:
         """Initialize a zone player, keeping the full source list for lookups."""
         super().__init__(coordinator, entry, zone)
         self._sources = sources
+        self._attr_device_class = device_class
 
     @property
     def _status(self) -> ZoneStatus | None:

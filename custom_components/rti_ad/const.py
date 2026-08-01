@@ -40,6 +40,12 @@ MIN_ZONES = 1
 MAX_ZONES = 8
 DEFAULT_ZONES = 4
 
+# Values match MediaPlayerDeviceClass.SPEAKER/.RECEIVER directly, so no
+# separate mapping table is needed between the stored option and the
+# entity's actual device_class -- see media_player.py.
+CONF_ZONE_DEVICE_CLASS = "zone_device_class"
+DEFAULT_ZONE_DEVICE_CLASS = "speaker"
+
 MIN_SOURCES = 1
 MAX_SOURCES = 8
 DEFAULT_SOURCE_COUNT = 4

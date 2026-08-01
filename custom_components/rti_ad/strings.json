@@ -8,7 +8,11 @@
           "host": "Host or IP address",
           "port": "Port",
           "zones": "Number of zones",
-          "source_count": "Number of sources"
+          "source_count": "Number of sources",
+          "zone_device_class": "Apple Home / HomeKit zone type"
+        },
+        "data_description": {
+          "zone_device_class": "Receiver adds volume and source control in Apple Home, but HomeKit then requires this zone to be paired as its own accessory instead of through a shared bridge."
         }
       },
       "sources": {
@@ -56,7 +60,11 @@
         "data": {
           "zones": "Number of zones",
           "source_count": "Number of sources",
+          "zone_device_class": "Apple Home / HomeKit zone type",
           "edit_sources": "Edit source names and enabled state"
+        },
+        "data_description": {
+          "zone_device_class": "Receiver adds volume and source control in Apple Home, but HomeKit then requires this zone to be paired as its own accessory instead of through a shared bridge."
         }
       },
       "sources": {
@@ -84,6 +92,14 @@
     },
     "error": {
       "no_sources_enabled": "At least one source must be enabled."
+    }
+  },
+  "selector": {
+    "zone_device_class": {
+      "options": {
+        "speaker": "Speaker (simple on/off + mute in Apple Home)",
+        "receiver": "Receiver (adds volume + source picker, needs its own HomeKit pairing)"
+      }
     }
   },
   "entity": {
