@@ -12,10 +12,10 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_platform
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from . import RtiAd4xConfigEntry
+from . import RtiAdConfigEntry
 from .const import CONF_SOURCES, CONF_ZONES, SERVICE_ALL_ZONES_OFF
-from .coordinator import RtiAd4xCoordinator
-from .entity import RtiAd4xZoneEntity
+from .coordinator import RtiAdCoordinator
+from .entity import RtiAdZoneEntity
 from .protocol import ZoneStatus
 from .sources import Source, normalize_sources
 
@@ -33,7 +33,7 @@ SUPPORTED_FEATURES = (
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    entry: RtiAd4xConfigEntry,
+    entry: RtiAdConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     coordinator = entry.runtime_data
@@ -43,7 +43,7 @@ async def async_setup_entry(
     zones: int = entry.options.get(CONF_ZONES, entry.data[CONF_ZONES])
 
     async_add_entities(
-        RtiAd4xZoneMediaPlayer(coordinator, entry, zone, sources)
+        RtiAdZoneMediaPlayer(coordinator, entry, zone, sources)
         for zone in range(1, zones + 1)
     )
 
@@ -59,7 +59,7 @@ async def async_setup_entry(
     )
 
 
-class RtiAd4xZoneMediaPlayer(RtiAd4xZoneEntity, MediaPlayerEntity):
+class RtiAdZoneMediaPlayer(RtiAdZoneEntity, MediaPlayerEntity):
     """One RTI AD-Nx zone, exposed as a media player."""
 
     _attr_name = None  # primary entity of the zone device; no name suffix
@@ -68,8 +68,8 @@ class RtiAd4xZoneMediaPlayer(RtiAd4xZoneEntity, MediaPlayerEntity):
 
     def __init__(
         self,
-        coordinator: RtiAd4xCoordinator,
-        entry: RtiAd4xConfigEntry,
+        coordinator: RtiAdCoordinator,
+        entry: RtiAdConfigEntry,
         zone: int,
         sources: list[Source],
     ) -> None:

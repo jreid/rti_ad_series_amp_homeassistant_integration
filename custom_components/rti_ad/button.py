@@ -8,22 +8,22 @@ from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from . import RtiAd4xConfigEntry
+from . import RtiAdConfigEntry
 from .const import DOMAIN
-from .coordinator import RtiAd4xCoordinator
+from .coordinator import RtiAdCoordinator
 
 PARALLEL_UPDATES = 1
 
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    entry: RtiAd4xConfigEntry,
+    entry: RtiAdConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    async_add_entities([RtiAd4xAllZonesOffButton(entry.runtime_data, entry)])
+    async_add_entities([RtiAdAllZonesOffButton(entry.runtime_data, entry)])
 
 
-class RtiAd4xAllZonesOffButton(CoordinatorEntity[RtiAd4xCoordinator], ButtonEntity):
+class RtiAdAllZonesOffButton(CoordinatorEntity[RtiAdCoordinator], ButtonEntity):
     """Turns off every zone on the amplifier with a single command.
 
     Lives on the amp hub device, not a zone device -- it isn't specific to
@@ -35,9 +35,7 @@ class RtiAd4xAllZonesOffButton(CoordinatorEntity[RtiAd4xCoordinator], ButtonEnti
     _attr_has_entity_name = True
     _attr_translation_key = "all_zones_off"
 
-    def __init__(
-        self, coordinator: RtiAd4xCoordinator, entry: RtiAd4xConfigEntry
-    ) -> None:
+    def __init__(self, coordinator: RtiAdCoordinator, entry: RtiAdConfigEntry) -> None:
         super().__init__(coordinator)
         self._attr_unique_id = f"{entry.entry_id}_all_zones_off"
         self._attr_device_info = DeviceInfo(identifiers={(DOMAIN, entry.entry_id)})

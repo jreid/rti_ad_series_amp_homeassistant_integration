@@ -14,8 +14,8 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 from .const import COMMAND_COALESCE_WINDOW, DOMAIN, POLL_FAILURE_TOLERANCE
 from .protocol import (
     VOLUME_STEP_LEVEL,
-    RtiAd4xClient,
-    RtiAd4xError,
+    RtiAdClient,
+    RtiAdError,
     ToneStatus,
     ZoneStatus,
 )
@@ -70,7 +70,7 @@ class _Work:
     bass: int | None
 
 
-class RtiAd4xCoordinator(DataUpdateCoordinator[dict[int, ZoneData]]):
+class RtiAdCoordinator(DataUpdateCoordinator[dict[int, ZoneData]]):
     """Holds zone and tone state for one amplifier.
 
     There is no periodic polling: the amplifier has no other writer, and every
@@ -86,7 +86,7 @@ class RtiAd4xCoordinator(DataUpdateCoordinator[dict[int, ZoneData]]):
     def __init__(
         self,
         hass: HomeAssistant,
-        client: RtiAd4xClient,
+        client: RtiAdClient,
         zones: list[int],
     ) -> None:
         super().__init__(
@@ -100,13 +100,13 @@ class RtiAd4xCoordinator(DataUpdateCoordinator[dict[int, ZoneData]]):
         self._lock = asyncio.Lock()
         self._pending: dict[int, _Pending] = {z: _Pending() for z in zones}
         self._flush_task: asyncio.Task[None] | None = None
-        self._flush_errors: dict[int, RtiAd4xError] = {}
+        self._flush_errors: dict[int, RtiAdError] = {}
         self._consecutive_failures = 0
 
     async def _async_update_data(self) -> dict[int, ZoneData]:
         try:
             data = await self._async_read_all()
-        except RtiAd4xError as err:
+        except RtiAdError as err:
             self._consecutive_failures += 1
             # Losing a race for the single control port is ordinary contention,
             # not a fault. Keep serving the last known state for a few attempts
@@ -132,7 +132,7 @@ class RtiAd4xCoordinator(DataUpdateCoordinator[dict[int, ZoneData]]):
                 # still want the zone itself to stay available.
                 try:
                     tone = await self.client.get_tone_status(zone)
-                except RtiAd4xError as err:
+                except RtiAdError as err:
                     _LOGGER.debug("Tone query failed for zone %s: %s", zone, err)
                     tone = None
                 data[zone] = ZoneData(status=status, tone=tone)
@@ -153,7 +153,7 @@ class RtiAd4xCoordinator(DataUpdateCoordinator[dict[int, ZoneData]]):
         async with self._lock:
             try:
                 status = await action(zone, *args)
-            except RtiAd4xError as err:
+            except RtiAdError as err:
                 raise HomeAssistantError(f"Zone {zone}: {err}") from err
         data = dict(self.data or {})
         existing = data.get(zone)
@@ -176,7 +176,7 @@ class RtiAd4xCoordinator(DataUpdateCoordinator[dict[int, ZoneData]]):
         async with self._lock:
             try:
                 await self.client.all_zones_off()
-            except RtiAd4xError as err:
+            except RtiAdError as err:
                 raise HomeAssistantError(
                     f"Could not turn off all zones: {err}"
                 ) from err
@@ -327,7 +327,7 @@ class RtiAd4xCoordinator(DataUpdateCoordinator[dict[int, ZoneData]]):
                     if work.bass is not None:
                         tone = await self.client.set_bass(zone, work.bass)
                         data = self._merge(data, zone, tone=tone)
-                except RtiAd4xError as err:
+                except RtiAdError as err:
                     _LOGGER.exception("Failed to apply adjustments for zone %s", zone)
                     self._flush_errors[zone] = err
         self.async_set_updated_data(data)

@@ -90,17 +90,17 @@ def test_tone_reply_puts_bass_before_treble():
 def test_tone_command_answered_with_zone_status_means_zone_is_off():
     try:
         p._parse_tone_status_line("#01,0,0,01,-40", "treble")
-    except p.RtiAd4xZoneOffError as err:
+    except p.RtiAdZoneOffError as err:
         assert "zone is off" in str(err)
     else:
-        raise AssertionError("expected RtiAd4xZoneOffError")
+        raise AssertionError("expected RtiAdZoneOffError")
 
 
 def test_malformed_replies_are_rejected():
     for bad in ("garbage", "$01,+00", "$01,a,b"):
         try:
             p._parse_tone_status_line(bad)
-        except p.RtiAd4xError:
+        except p.RtiAdError:
             pass
         else:
             raise AssertionError(f"{bad!r} should have been rejected")
@@ -120,7 +120,7 @@ def test_rejection_marker_raises():
     for bad in ("#?", "#01,1,0", "nonsense"):
         try:
             p._parse_status_line(bad)
-        except p.RtiAd4xError:
+        except p.RtiAdError:
             pass
         else:
             raise AssertionError(f"{bad!r} should have been rejected")
@@ -131,7 +131,7 @@ def test_malformed_power_or_mute_field_is_rejected_not_read_as_off():
     for bad in ("#01,X,0,01,-27", "#01,1,X,01,-27", "#01,2,0,01,-27"):
         try:
             p._parse_status_line(bad)
-        except p.RtiAd4xError:
+        except p.RtiAdError:
             pass
         else:
             raise AssertionError(f"{bad!r} should have been rejected")
@@ -142,7 +142,7 @@ def test_non_numeric_zone_or_source_field_is_rejected():
     for bad in ("#0X,1,0,01,-27", "#01,1,0,0X,-27", "#01,1,0,01,-2X"):
         try:
             p._parse_status_line(bad)
-        except p.RtiAd4xError:
+        except p.RtiAdError:
             pass
         else:
             raise AssertionError(f"{bad!r} should have been rejected")
@@ -183,7 +183,7 @@ def test_commands_are_paced_to_the_amplifier_floor():
     async def go():
         srv = FakeServer()
         port = await srv.start()
-        client = p.RtiAd4xClient("127.0.0.1", port)
+        client = p.RtiAdClient("127.0.0.1", port)
         async with client.session():
             for _ in range(3):
                 await client.get_status(1)
@@ -201,7 +201,7 @@ def test_one_shot_commands_release_the_port():
     async def go():
         srv = FakeServer()
         port = await srv.start()
-        client = p.RtiAd4xClient("127.0.0.1", port)
+        client = p.RtiAdClient("127.0.0.1", port)
         await client.get_status(1)
         await settle()
         assert srv.live == 0, "socket still held after a one-shot command"
@@ -218,7 +218,7 @@ def test_session_shares_one_connection_then_releases():
     async def go():
         srv = FakeServer()
         port = await srv.start()
-        client = p.RtiAd4xClient("127.0.0.1", port)
+        client = p.RtiAdClient("127.0.0.1", port)
         async with client.session():
             for zone in (1, 2, 3, 4):
                 await client.get_status(zone)
@@ -236,7 +236,7 @@ def test_foreign_status_line_is_not_mistaken_for_our_reply():
     async def go():
         srv = FakeServer(inject_foreign=True)
         port = await srv.start()
-        client = p.RtiAd4xClient("127.0.0.1", port)
+        client = p.RtiAdClient("127.0.0.1", port)
         assert (await client.get_status(3)).zone == 3
         assert (await client.get_tone_status(2)).zone == 2
         srv.stop()
@@ -252,11 +252,11 @@ def test_refused_connection_is_retried_and_clearly_explained():
         dead_port = probe.getsockname()[1]
         probe.close()
 
-        client = p.RtiAd4xClient("127.0.0.1", dead_port)
+        client = p.RtiAdClient("127.0.0.1", dead_port)
         started = time.monotonic()
         try:
             await client.get_status(1)
-        except p.RtiAd4xError as err:
+        except p.RtiAdError as err:
             assert "accepts only one" in str(err), str(err)
         else:
             raise AssertionError("expected a connection failure")
@@ -271,13 +271,13 @@ def test_a_held_port_blocks_others_until_released():
     async def go():
         srv = FakeServer(single_client=True)
         port = await srv.start()
-        holder = p.RtiAd4xClient("127.0.0.1", port)
-        rival = p.RtiAd4xClient("127.0.0.1", port)
+        holder = p.RtiAdClient("127.0.0.1", port)
+        rival = p.RtiAdClient("127.0.0.1", port)
         async with holder.session():
             await holder.get_status(1)
             try:
                 await rival.get_status(1)
-            except p.RtiAd4xError:
+            except p.RtiAdError:
                 pass
             else:
                 raise AssertionError("rival should not get in while port is held")
@@ -291,7 +291,7 @@ def test_a_held_port_blocks_others_until_released():
 # --------------------------------------------------------------------------
 # Client command methods -- wire format and reply parsing for each one.
 # These are only otherwise exercised through FakeAmp in the coordinator
-# tests, which never runs the real command strings past RtiAd4xClient.
+# tests, which never runs the real command strings past RtiAdClient.
 # --------------------------------------------------------------------------
 
 
@@ -299,7 +299,7 @@ def test_power_commands_wake_and_sleep_a_zone():
     async def go():
         srv = FakeServer()
         port = await srv.start()
-        client = p.RtiAd4xClient("127.0.0.1", port)
+        client = p.RtiAdClient("127.0.0.1", port)
         async with client.session():
             on = await client.power_on(1)
             off = await client.power_off(1)
@@ -317,7 +317,7 @@ def test_set_source_sends_the_source_number():
     async def go():
         srv = FakeServer()
         port = await srv.start()
-        client = p.RtiAd4xClient("127.0.0.1", port)
+        client = p.RtiAdClient("127.0.0.1", port)
         status = await client.set_source(2, 3)
         srv.stop()
         assert status.zone == 2
@@ -329,7 +329,7 @@ def test_set_mute_and_volume_level_and_steps():
     async def go():
         srv = FakeServer()
         port = await srv.start()
-        client = p.RtiAd4xClient("127.0.0.1", port)
+        client = p.RtiAdClient("127.0.0.1", port)
         async with client.session():
             assert (await client.set_mute(1, True)).zone == 1
             assert (await client.set_volume_level(1, 0.5)).zone == 1
@@ -344,7 +344,7 @@ def test_set_treble_and_bass_parse_the_tone_reply():
     async def go():
         srv = FakeServer()
         port = await srv.start()
-        client = p.RtiAd4xClient("127.0.0.1", port)
+        client = p.RtiAdClient("127.0.0.1", port)
         async with client.session():
             treble = await client.set_treble(1, 8)
             bass = await client.set_bass(1, -2)
@@ -359,7 +359,7 @@ def test_all_zones_off_expects_the_zalloff_reply():
     async def go():
         srv = FakeServer()
         port = await srv.start()
-        client = p.RtiAd4xClient("127.0.0.1", port)
+        client = p.RtiAdClient("127.0.0.1", port)
         await client.all_zones_off()  # would raise if the reply weren't #ZALLOFF
         srv.stop()
 
@@ -375,10 +375,10 @@ def test_all_zones_off_rejects_an_unexpected_reply():
 
         server = await asyncio.start_server(handle, "127.0.0.1", 0)
         port = server.sockets[0].getsockname()[1]
-        client = p.RtiAd4xClient("127.0.0.1", port)
+        client = p.RtiAdClient("127.0.0.1", port)
         try:
             await client.all_zones_off()
-        except p.RtiAd4xError as err:
+        except p.RtiAdError as err:
             assert "Unexpected reply" in str(err)
         else:
             raise AssertionError("expected rejection of a non-ZALLOFF reply")
@@ -400,10 +400,10 @@ def test_connection_closed_without_a_reply_is_reported():
 
         server = await asyncio.start_server(handle, "127.0.0.1", 0)
         port = server.sockets[0].getsockname()[1]
-        client = p.RtiAd4xClient("127.0.0.1", port)
+        client = p.RtiAdClient("127.0.0.1", port)
         try:
             await client.get_status(1)
-        except p.RtiAd4xError as err:
+        except p.RtiAdError as err:
             assert "closed" in str(err)
         else:
             raise AssertionError("expected a closed-connection failure")
@@ -424,10 +424,10 @@ def test_no_reply_amid_a_flood_of_broadcasts_is_reported():
 
         server = await asyncio.start_server(handle, "127.0.0.1", 0)
         port = server.sockets[0].getsockname()[1]
-        client = p.RtiAd4xClient("127.0.0.1", port)
+        client = p.RtiAdClient("127.0.0.1", port)
         try:
             await client.get_status(1)
-        except p.RtiAd4xError as err:
+        except p.RtiAdError as err:
             assert "amid unsolicited output" in str(err)
         else:
             raise AssertionError("expected the reply-line cap to be enforced")

@@ -8,19 +8,19 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 
 from .const import CONF_ZONES, DOMAIN
-from .coordinator import RtiAd4xCoordinator
-from .protocol import RtiAd4xClient
+from .coordinator import RtiAdCoordinator
+from .protocol import RtiAdClient
 
 PLATFORMS = [Platform.MEDIA_PLAYER, Platform.NUMBER, Platform.BUTTON]
 
-type RtiAd4xConfigEntry = ConfigEntry[RtiAd4xCoordinator]
+type RtiAdConfigEntry = ConfigEntry[RtiAdCoordinator]
 
 
-async def async_setup_entry(hass: HomeAssistant, entry: RtiAd4xConfigEntry) -> bool:
-    client = RtiAd4xClient(entry.data[CONF_HOST], entry.data[CONF_PORT])
+async def async_setup_entry(hass: HomeAssistant, entry: RtiAdConfigEntry) -> bool:
+    client = RtiAdClient(entry.data[CONF_HOST], entry.data[CONF_PORT])
     zones = entry.options.get(CONF_ZONES, entry.data[CONF_ZONES])
 
-    coordinator = RtiAd4xCoordinator(hass, client, zones=list(range(1, zones + 1)))
+    coordinator = RtiAdCoordinator(hass, client, zones=list(range(1, zones + 1)))
     # The only unconditional read: everything after this is driven by command
     # replies, so the amplifier's single control port stays free.
     await coordinator.async_config_entry_first_refresh()
@@ -63,7 +63,7 @@ def _async_prune_stale_zone_devices(
             device_registry.async_remove_device(device.id)
 
 
-async def async_unload_entry(hass: HomeAssistant, entry: RtiAd4xConfigEntry) -> bool:
+async def async_unload_entry(hass: HomeAssistant, entry: RtiAdConfigEntry) -> bool:
     unloaded = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if unloaded:
         entry.runtime_data.async_cancel_pending()

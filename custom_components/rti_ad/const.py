@@ -16,7 +16,7 @@ DEFAULT_CONNECT_TIMEOUT = 3
 RESPONSE_TIMEOUT = 3
 
 # The amplifier accepts only ONE TCP client at a time, so a connection is held
-# no longer than a single logical operation (see RtiAd4xClient.session) and a
+# no longer than a single logical operation (see RtiAdClient.session) and a
 # refused connect usually means "someone else is talking to it right now".
 CONNECTION_RECONNECT_SETTLE = 0.25
 MAX_CONNECT_ATTEMPTS = 3
