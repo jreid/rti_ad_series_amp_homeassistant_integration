@@ -17,14 +17,14 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 async def test_device_info_is_the_amp_hub_not_a_zone_device(hass):
     coordinator, _ = make_coordinator(hass, zones=(1, 2))
     entry = MockConfigEntry(domain=const.DOMAIN, entry_id="entry1")
-    entity = btn.RtiAd4xAllZonesOffButton(coordinator, entry)
+    entity = btn.RtiAdAllZonesOffButton(coordinator, entry)
     assert entity._attr_device_info["identifiers"] == {(const.DOMAIN, "entry1")}
 
 
 async def test_unique_id_is_scoped_to_the_entry(hass):
     coordinator, _ = make_coordinator(hass, zones=(1, 2))
     entry = MockConfigEntry(domain=const.DOMAIN, entry_id="entry1")
-    entity = btn.RtiAd4xAllZonesOffButton(coordinator, entry)
+    entity = btn.RtiAdAllZonesOffButton(coordinator, entry)
     assert entity._attr_unique_id == "entry1_all_zones_off"
 
 
@@ -37,7 +37,7 @@ async def test_press_turns_off_every_zone_with_one_command(hass):
     coordinator, amp = make_coordinator(hass, zones=(1, 2), powered=True)
     coordinator.data = await coordinator._async_update_data()
     entry = MockConfigEntry(domain=const.DOMAIN, entry_id="entry1")
-    entity = btn.RtiAd4xAllZonesOffButton(coordinator, entry)
+    entity = btn.RtiAdAllZonesOffButton(coordinator, entry)
 
     await entity.async_press()
 

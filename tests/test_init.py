@@ -49,7 +49,7 @@ async def test_setup_entry_creates_coordinator_and_forwards_platforms(hass):
     assert await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
 
-    assert isinstance(entry.runtime_data, coord_mod.RtiAd4xCoordinator)
+    assert isinstance(entry.runtime_data, coord_mod.RtiAdCoordinator)
 
     device_registry = dr.async_get(hass)
     hub = device_registry.async_get_device(identifiers={(const.DOMAIN, entry.entry_id)})

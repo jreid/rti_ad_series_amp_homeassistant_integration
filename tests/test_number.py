@@ -16,7 +16,7 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 def _number(hass, kind, zone=1, zones=(1, 2), powered=True):
     coordinator, amp = make_coordinator(hass, zones=zones, powered=powered)
     entry = MockConfigEntry(domain=const.DOMAIN, entry_id="entry1")
-    entity = num.RtiAd4xToneNumber(coordinator, entry, zone, kind)
+    entity = num.RtiAdToneNumber(coordinator, entry, zone, kind)
     return entity, coordinator, amp
 
 

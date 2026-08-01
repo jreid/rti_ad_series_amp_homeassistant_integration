@@ -5,20 +5,20 @@ from __future__ import annotations
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from . import RtiAd4xConfigEntry
+from . import RtiAdConfigEntry
 from .const import DOMAIN
-from .coordinator import RtiAd4xCoordinator
+from .coordinator import RtiAdCoordinator
 
 
-class RtiAd4xZoneEntity(CoordinatorEntity[RtiAd4xCoordinator]):
+class RtiAdZoneEntity(CoordinatorEntity[RtiAdCoordinator]):
     """Base for the media player and number entities of one zone."""
 
     _attr_has_entity_name = True
 
     def __init__(
         self,
-        coordinator: RtiAd4xCoordinator,
-        entry: RtiAd4xConfigEntry,
+        coordinator: RtiAdCoordinator,
+        entry: RtiAdConfigEntry,
         zone: int,
         *,
         unique_id_suffix: str = "",

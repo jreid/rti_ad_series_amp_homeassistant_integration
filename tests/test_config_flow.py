@@ -4,7 +4,7 @@ name/enabled) shape shared by setup and options.
 
 These drive the flow through the real `FlowManager`
 (`hass.config_entries.flow`/`.options`) rather than instantiating
-RtiAd4xConfigFlow/RtiAd4xOptionsFlow directly: real HA's ConfigFlow base
+RtiAdConfigFlow/RtiAdOptionsFlow directly: real HA's ConfigFlow base
 class relies on the manager to populate `self.handler`, `self.context`, and
 `self.flow_id` before any step runs, so a bare instance can't be driven the
 way a hand-rolled stand-in could. An abort or form is a returned result
@@ -45,7 +45,7 @@ async def _ok_validate(host, port):
 
 
 async def _fail_validate(host, port):
-    raise p.RtiAd4xError("boom")
+    raise p.RtiAdError("boom")
 
 
 def _user_input(**overrides):
@@ -122,7 +122,7 @@ async def test_validate_connection_fails_against_a_refused_port():
 
     try:
         await cf._validate_connection("127.0.0.1", dead_port)
-    except p.RtiAd4xError:
+    except p.RtiAdError:
         pass
     else:
         raise AssertionError("expected a connection failure")

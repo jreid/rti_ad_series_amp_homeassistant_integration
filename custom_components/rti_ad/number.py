@@ -8,10 +8,10 @@ from homeassistant.components.number import NumberEntity, NumberMode
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from . import RtiAd4xConfigEntry
+from . import RtiAdConfigEntry
 from .const import CONF_ZONES, MAX_TONE_DB, MIN_TONE_DB, TONE_STEP_DB
-from .coordinator import RtiAd4xCoordinator
-from .entity import RtiAd4xZoneEntity
+from .coordinator import RtiAdCoordinator
+from .entity import RtiAdZoneEntity
 
 PARALLEL_UPDATES = 1
 
@@ -20,20 +20,20 @@ ToneKind = Literal["treble", "bass"]
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    entry: RtiAd4xConfigEntry,
+    entry: RtiAdConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     coordinator = entry.runtime_data
     zones: int = entry.options.get(CONF_ZONES, entry.data[CONF_ZONES])
 
     async_add_entities(
-        RtiAd4xToneNumber(coordinator, entry, zone, kind)
+        RtiAdToneNumber(coordinator, entry, zone, kind)
         for zone in range(1, zones + 1)
         for kind in ("treble", "bass")
     )
 
 
-class RtiAd4xToneNumber(RtiAd4xZoneEntity, NumberEntity):
+class RtiAdToneNumber(RtiAdZoneEntity, NumberEntity):
     """A zone's treble or bass control, read back from the amplifier."""
 
     _attr_native_unit_of_measurement = "dB"
@@ -44,8 +44,8 @@ class RtiAd4xToneNumber(RtiAd4xZoneEntity, NumberEntity):
 
     def __init__(
         self,
-        coordinator: RtiAd4xCoordinator,
-        entry: RtiAd4xConfigEntry,
+        coordinator: RtiAdCoordinator,
+        entry: RtiAdConfigEntry,
         zone: int,
         kind: ToneKind,
     ) -> None:

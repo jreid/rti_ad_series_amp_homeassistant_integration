@@ -39,7 +39,7 @@ Confirmed by direct testing against a real AD-4x:
   instead; the integration's zone/source count fields just need to match
   whichever unit is connected.
 - **Commands must be spaced at least ~100 ms apart.** Anything faster is
-  silently swallowed. `RtiAd4xClient` paces itself, so this holds no matter
+  silently swallowed. `RtiAdClient` paces itself, so this holds no matter
   how fast callers ask for work.
 
 ### One client at a time
@@ -50,7 +50,7 @@ decides whether anything else can control the amplifier at all -- your own
 `nc` session included -- which makes it a correctness question, not an
 efficiency one.
 
-`RtiAd4xClient` therefore holds a connection for exactly one logical
+`RtiAdClient` therefore holds a connection for exactly one logical
 operation. `session()` brackets a group of related commands (the startup
 read, a batch of adjustments) onto one connection and closes it on exit;
 anything issued outside a session gets a one-shot connection. Between
@@ -87,7 +87,7 @@ a source is reasonable, and the amplifier does it in one command.
 
 Tone survives a power cycle, so nothing needs re-asserting beyond the deferred
 requests. A tone command that the amplifier does drop raises
-`RtiAd4xZoneOffError` rather than surfacing as a malformed reply.
+`RtiAdZoneOffError` rather than surfacing as a malformed reply.
 
 ### No polling
 

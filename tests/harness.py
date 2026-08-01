@@ -11,7 +11,7 @@ resolve normally, the same as they would inside a real HA install.
 reproducing behaviour measured on real hardware (absolute volume and source
 selection wake a powered-off zone; mute and tone commands are silently
 dropped, tone answering with a zone-status line, which the client surfaces
-as RtiAd4xZoneOffError).
+as RtiAdZoneOffError).
 """
 
 from __future__ import annotations
@@ -55,7 +55,7 @@ class FakeAmp:
 
     Notably: absolute volume and source selection wake a powered-off zone,
     while mute and tone commands are silently dropped -- tone answering with a
-    zone-status line, which the client surfaces as RtiAd4xZoneOffError.
+    zone-status line, which the client surfaces as RtiAdZoneOffError.
     """
 
     def __init__(self, zones=(1, 2), powered=True):
@@ -111,19 +111,19 @@ class FakeAmp:
     def _maybe_fail_write(self):
         if self.fail_next_writes > 0:
             self.fail_next_writes -= 1
-            raise protocol.RtiAd4xError("another client is probably connected")
+            raise protocol.RtiAdError("another client is probably connected")
 
     async def get_status(self, zone):
         if self.fail_next_reads > 0:
             self.fail_next_reads -= 1
-            raise protocol.RtiAd4xError("another client is probably connected")
+            raise protocol.RtiAdError("another client is probably connected")
         self.calls.append(("sta", zone))
         return self._status(zone)
 
     async def get_tone_status(self, zone):
         if self.fail_next_tone_reads > 0:
             self.fail_next_tone_reads -= 1
-            raise protocol.RtiAd4xError("tone query failed")
+            raise protocol.RtiAdError("tone query failed")
         self.calls.append(("set", zone))
         return self._tone(zone)
 
@@ -166,7 +166,7 @@ class FakeAmp:
     async def set_treble(self, zone, db):
         if not self.power[zone]:
             self.calls.append(("treble-dropped", zone))
-            raise protocol.RtiAd4xZoneOffError("zone is off")
+            raise protocol.RtiAdZoneOffError("zone is off")
         self._maybe_fail_write()
         self.treble[zone] = db
         self.calls.append(("trb", zone, db))
@@ -175,7 +175,7 @@ class FakeAmp:
     async def set_bass(self, zone, db):
         if not self.power[zone]:
             self.calls.append(("bass-dropped", zone))
-            raise protocol.RtiAd4xZoneOffError("zone is off")
+            raise protocol.RtiAdZoneOffError("zone is off")
         self._maybe_fail_write()
         self.bass[zone] = db
         self.calls.append(("bas", zone, db))
@@ -192,7 +192,7 @@ class FakeServer:
     """Serves the AD-4x line protocol over a real socket; optionally
     single-client like the real one.
 
-    Used wherever a test needs to exercise the real `RtiAd4xClient` (as
+    Used wherever a test needs to exercise the real `RtiAdClient` (as
     opposed to `FakeAmp`, which stands in for the client's own callers).
     """
 
@@ -252,7 +252,7 @@ async def settle():
 
 def make_coordinator(hass, zones=(1, 2), powered=True):
     amp = FakeAmp(zones, powered)
-    coord = coordinator.RtiAd4xCoordinator(hass, amp, list(zones))
+    coord = coordinator.RtiAdCoordinator(hass, amp, list(zones))
     return coord, amp
 
 

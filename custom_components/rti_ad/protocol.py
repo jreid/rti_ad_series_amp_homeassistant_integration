@@ -66,7 +66,7 @@ Command (zone off)  Behaviour
 
 So the amplifier either silently wakes a zone or silently drops the request.
 Callers wanting neither should check power state first; a tone command that
-was dropped raises :class:`RtiAd4xZoneOffError` rather than looking like a
+was dropped raises :class:`RtiAdZoneOffError` rather than looking like a
 malformed reply.
 
 ``*ZALLPWR00`` turns off every zone at once and replies ``#ZALLOFF``
@@ -103,11 +103,11 @@ from .const import (
 VOLUME_STEP_LEVEL = 1 / MAX_ATTENUATION_DB
 
 
-class RtiAd4xError(Exception):
+class RtiAdError(Exception):
     """Raised for connection failures or unexpected amplifier replies."""
 
 
-class RtiAd4xZoneOffError(RtiAd4xError):
+class RtiAdZoneOffError(RtiAdError):
     """The amplifier declined a command because the zone is powered off."""
 
 
@@ -188,15 +188,15 @@ def _is_direct_reply(line: str, expect_zone: int | None) -> bool:
 def _parse_status_line(line: str) -> ZoneStatus:
     line = line.strip()
     if line == "#?":
-        raise RtiAd4xError("Amplifier rejected the command")
+        raise RtiAdError("Amplifier rejected the command")
     if not line.startswith("#"):
-        raise RtiAd4xError(f"Unexpected reply: {line!r}")
+        raise RtiAdError(f"Unexpected reply: {line!r}")
     fields = line[1:].split(",")
     if len(fields) != 5:
-        raise RtiAd4xError(f"Unexpected reply: {line!r}")
+        raise RtiAdError(f"Unexpected reply: {line!r}")
     zone, power, mute, source, volume_db = fields
     if power not in ("0", "1") or mute not in ("0", "1"):
-        raise RtiAd4xError(f"Unexpected reply: {line!r}")
+        raise RtiAdError(f"Unexpected reply: {line!r}")
     try:
         return ZoneStatus(
             zone=int(zone),
@@ -206,7 +206,7 @@ def _parse_status_line(line: str) -> ZoneStatus:
             volume_db=int(volume_db),
         )
     except ValueError as err:
-        raise RtiAd4xError(f"Unexpected reply: {line!r}") from err
+        raise RtiAdError(f"Unexpected reply: {line!r}") from err
 
 
 def _parse_tone_status_line(line: str, command: str = "tone") -> ToneStatus:
@@ -219,14 +219,14 @@ def _parse_tone_status_line(line: str, command: str = "tone") -> ToneStatus:
     if line.startswith("#"):
         # A zone-status line in answer to a tone command means the amplifier
         # declined to act, which it does whenever the zone is powered off.
-        raise RtiAd4xZoneOffError(
+        raise RtiAdZoneOffError(
             f"Amplifier ignored the {command} command because the zone is off"
         )
     if not line.startswith("$"):
-        raise RtiAd4xError(f"Unexpected tone reply: {line!r}")
+        raise RtiAdError(f"Unexpected tone reply: {line!r}")
     fields = line[1:].split(",")
     if len(fields) != 3:
-        raise RtiAd4xError(f"Unexpected tone reply: {line!r}")
+        raise RtiAdError(f"Unexpected tone reply: {line!r}")
     try:
         zone, bass, treble = fields
         return ToneStatus(
@@ -235,10 +235,10 @@ def _parse_tone_status_line(line: str, command: str = "tone") -> ToneStatus:
             bass_db=int(bass),
         )
     except ValueError as err:
-        raise RtiAd4xError(f"Unexpected tone reply: {line!r}") from err
+        raise RtiAdError(f"Unexpected tone reply: {line!r}") from err
 
 
-class RtiAd4xClient:
+class RtiAdClient:
     """Talks to the amplifier, holding the socket only as long as necessary.
 
     The amplifier permits a single client, so connections are scoped to one
@@ -315,7 +315,7 @@ class RtiAd4xClient:
                 # Treat a refusal as "busy": back off by the settle interval and
                 # try again, since only one client may be connected at a time.
                 self._last_close = loop.time()
-        raise RtiAd4xError(
+        raise RtiAdError(
             f"Could not connect to {self._host}:{self._port}: "
             f"{_describe_failure(last_err)}"
         ) from last_err
@@ -335,12 +335,12 @@ class RtiAd4xClient:
                 break
             line = await asyncio.wait_for(self._reader.readline(), timeout=budget)
             if not line:
-                raise RtiAd4xError(f"Connection closed with no reply to {command!r}")
+                raise RtiAdError(f"Connection closed with no reply to {command!r}")
             line_str = line.decode("ascii", errors="replace").strip()
             if _is_direct_reply(line_str, expect_zone):
                 self._last_activity = loop.time()
                 return line_str
-        raise RtiAd4xError(f"No reply to {command!r} amid unsolicited output")
+        raise RtiAdError(f"No reply to {command!r} amid unsolicited output")
 
     async def _pace(self, loop: asyncio.AbstractEventLoop) -> None:
         """Hold off until MIN_COMMAND_INTERVAL has passed since the last exchange.
@@ -382,7 +382,7 @@ class RtiAd4xClient:
             except (TimeoutError, OSError) as err:
                 last_err = err
         await self._close_connection()
-        raise RtiAd4xError(
+        raise RtiAdError(
             f"Command {command!r} failed: {_describe_failure(last_err)}"
         ) from last_err
 
@@ -437,4 +437,4 @@ class RtiAd4xClient:
         """Turn off all zones at once. Reply is #ZALLOFF, not per-zone status."""
         reply = await self._send("ZALLPWR00")
         if not reply.startswith("#ZALLOFF"):
-            raise RtiAd4xError(f"Unexpected reply to all_zones_off: {reply!r}")
+            raise RtiAdError(f"Unexpected reply to all_zones_off: {reply!r}")

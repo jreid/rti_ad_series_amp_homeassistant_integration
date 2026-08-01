@@ -29,7 +29,7 @@ SOURCES = [
 def _player(hass, zone=1, zones=(1, 2), powered=True):
     coordinator, amp = make_coordinator(hass, zones=zones, powered=powered)
     entry = MockConfigEntry(domain=const.DOMAIN, entry_id="entry1")
-    player = mp.RtiAd4xZoneMediaPlayer(coordinator, entry, zone, SOURCES)
+    player = mp.RtiAdZoneMediaPlayer(coordinator, entry, zone, SOURCES)
     return player, coordinator, amp
 
 

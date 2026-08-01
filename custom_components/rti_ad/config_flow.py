@@ -30,7 +30,7 @@ from .const import (
     MIN_SOURCES,
     MIN_ZONES,
 )
-from .protocol import RtiAd4xClient, RtiAd4xError
+from .protocol import RtiAdClient, RtiAdError
 from .sources import Source, default_sources, normalize_sources, resize_sources
 
 DEFAULT_NAME = "RTI AD Series Amplifier"
@@ -62,7 +62,7 @@ def _sources_from_input(user_input: dict[str, Any], count: int) -> list[Source]:
 
 
 async def _validate_connection(host: str, port: int) -> None:
-    client = RtiAd4xClient(host, port)
+    client = RtiAdClient(host, port)
     try:
         await client.get_status(1)
     finally:
@@ -77,7 +77,7 @@ async def _validate_or_set_error(host: str, port: int, errors: dict[str, str]) -
     """
     try:
         await _validate_connection(host, port)
-    except RtiAd4xError:
+    except RtiAdError:
         errors["base"] = "cannot_connect"
         return False
     return True
@@ -138,7 +138,7 @@ def _conflicting_entry(
     )
 
 
-class RtiAd4xConfigFlow(ConfigFlow, domain=DOMAIN):
+class RtiAdConfigFlow(ConfigFlow, domain=DOMAIN):
     """Handle a config flow for RTI AD Series Amplifiers."""
 
     VERSION = 1
@@ -251,16 +251,16 @@ class RtiAd4xConfigFlow(ConfigFlow, domain=DOMAIN):
     @staticmethod
     @callback
     def async_get_options_flow(config_entry: ConfigEntry) -> OptionsFlow:
-        return RtiAd4xOptionsFlow()
+        return RtiAdOptionsFlow()
 
 
-class RtiAd4xOptionsFlow(OptionsFlow):
+class RtiAdOptionsFlow(OptionsFlow):
     """Allow editing zone count, source count, and per-source name/enabled after setup."""
 
     def __init__(self) -> None:
         super().__init__()
         # Carried from async_step_init to async_step_sources; see the
-        # matching note on RtiAd4xConfigFlow.__init__.
+        # matching note on RtiAdConfigFlow.__init__.
         self._zones: int = 0
         self._source_count: int = 0
         self._current_sources: list[Source] = []
