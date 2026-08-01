@@ -91,15 +91,49 @@ requests. A tone command that the amplifier does drop raises
 
 ### No polling
 
-Since nothing else can write to the amplifier, and every command answers
-with the resulting state, the cached state cannot drift while Home
-Assistant is running. State is read **once at setup** and maintained from
-command replies after that. There is no poll interval to configure.
+Every command answers with the resulting state, so as long as Home Assistant
+is the only thing changing that state, the cache cannot drift. State is read
+**once at setup** and maintained from command replies after that. There is no
+poll interval to configure.
 
-The tradeoff is that a power-cycle of the amplifier isn't noticed: zones you
-haven't touched keep showing pre-reboot state. Any zone you *do* touch
-self-corrects from that command's reply, and `homeassistant.update_entity`
-forces a full re-read.
+#### The sole-writer assumption
+
+This is the one design decision here that depends on your installation rather
+than on the hardware, so it's worth being explicit about what it does and
+doesn't rest on.
+
+It is *not* implied by the single-client TCP restriction above. That
+restriction only prevents another client from being connected **at the same
+time** as this integration -- and since a connection is deliberately held for
+just one logical operation, the control port is free essentially all of the
+time. Anything else on your network is free to connect during those gaps and
+change whatever it likes. Physical control paths -- an RTI keypad, an IR
+remote, the front panel -- don't go through TCP at all and are unaffected by
+the restriction in either direction.
+
+So the assumption is a statement about your setup: **nothing other than this
+integration changes zone state.** Where that holds, no polling is needed and
+the amplifier's single control port stays free for you to use. Where it
+doesn't, state changed by that other controller is invisible to Home
+Assistant until something forces a re-read, and the affected entities will
+show stale power, volume, mute, or source values.
+
+Three things bring an out-of-sync zone back:
+
+- Touching the zone from Home Assistant -- the command's own reply carries
+  the true resulting state, so any zone you actually operate self-corrects.
+- `homeassistant.update_entity` on any entity of the amplifier, which forces
+  a full re-read of every zone.
+- Reloading the integration.
+
+If you do have another controller wired to the same amplifier and want state
+to track it, an automation calling `homeassistant.update_entity` on a
+schedule reintroduces polling at whatever interval you choose -- with the
+caveat that each sweep occupies the single control port for its duration.
+
+The same blind spot covers a power-cycle of the amplifier itself: zones you
+haven't touched keep showing pre-reboot state until one of the above
+refreshes them.
 
 ### Coalescing rapid adjustments
 
