@@ -188,15 +188,18 @@ You'll be asked for:
 - **Port** -- defaults to 23.
 - **Number of zones** -- 1-8.
 - **Number of sources** -- 1-8.
+- **Apple Home / HomeKit zone type** -- Speaker (default) or Receiver; see
+  [Apple Home / HomeKit](#apple-home--homekit) below.
 
 A second step then shows one name + enabled row per source (e.g.
 `Chromecast`, `Turntable`, `AUX`, `Radio`). Unchecking a source hides it from
 every zone's source dropdown without losing its slot or renumbering the
 others -- useful for a source that's wired but not currently in use.
 
-Zone count, source count, and per-source names/enabled state can all be
-changed later from the integration's Configure button without removing it;
-lowering the zone count removes the now-unused zone devices and entities.
+Zone count, source count, the Apple Home / HomeKit zone type, and
+per-source names/enabled state can all be changed later from the
+integration's Configure button without removing it; lowering the zone count
+removes the now-unused zone devices and entities.
 Configure only asks for the source-naming step again when the source count
 actually changes, or when you tick "Edit source names and enabled state" --
 a zones-only change applies immediately without having to page through and
@@ -243,6 +246,31 @@ action: rti_ad.all_zones_off
 target:
   entity_id: media_player.zone_1
 ```
+
+## Apple Home / HomeKit
+
+Getting these entities into Apple Home means running Home Assistant's
+`homekit` integration (a "bridge") with these steps in mind:
+
+- **The bridge's domain filter must include `media_player` (and `button`,
+  for `button.all_zones_off`)**. Home Assistant's `homekit` integration only
+  exposes entities in its configured `include_domains`; by default a bridge
+  set up for other device types (lights, climate, locks, ...) won't include
+  either domain, and nothing from this integration will appear in Apple
+  Home until you add them.
+- **`number.treble`/`number.bass` can never appear in Apple Home.** HomeKit
+  has no accessory type for a generic numeric slider, so these two entities
+  are always skipped by the bridge regardless of configuration.
+- **The zone type setting controls how much of a zone shows up.** Speaker
+  (the default) becomes a simple Power switch and Mute switch in Apple
+  Home -- no volume slider, no source picker, but it's compatible with a
+  normal shared HomeKit bridge. Receiver becomes a proper Apple Home tile
+  with a volume slider and a source picker, but HomeKit requires
+  Receiver-class media players to be paired as their own accessory rather
+  than through a shared bridge. If your bridge has "Enable accessory mode
+  entities" disabled (the more common setup), a zone configured as Receiver
+  will simply be missing from that bridge -- you'd need a second `homekit`
+  integration entry, in accessory mode, limited to that one zone entity.
 
 ## Tests
 

@@ -15,14 +15,21 @@ from homeassistant.config_entries import (
 )
 from homeassistant.const import CONF_HOST, CONF_NAME, CONF_PORT
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.selector import (
+    SelectSelector,
+    SelectSelectorConfig,
+    SelectSelectorMode,
+)
 
 from .const import (
     CONF_EDIT_SOURCES,
     CONF_SOURCE_COUNT,
     CONF_SOURCES,
+    CONF_ZONE_DEVICE_CLASS,
     CONF_ZONES,
     DEFAULT_PORT,
     DEFAULT_SOURCE_COUNT,
+    DEFAULT_ZONE_DEVICE_CLASS,
     DEFAULT_ZONES,
     DOMAIN,
     MAX_SOURCES,
@@ -34,6 +41,17 @@ from .protocol import RtiAdClient, RtiAdError
 from .sources import Source, default_sources, normalize_sources, resize_sources
 
 DEFAULT_NAME = "RTI AD Series Amplifier"
+
+# Labels for "speaker"/"receiver" come from strings.json's top-level
+# "selector.zone_device_class.options" via translation_key -- a bare
+# vol.In(...) would otherwise show the raw option strings in the UI.
+_ZONE_DEVICE_CLASS_SELECTOR = SelectSelector(
+    SelectSelectorConfig(
+        options=["speaker", "receiver"],
+        mode=SelectSelectorMode.DROPDOWN,
+        translation_key=CONF_ZONE_DEVICE_CLASS,
+    )
+)
 
 
 def _sources_schema(count: int, current: list[Source]) -> dict[Any, Any]:
@@ -177,6 +195,7 @@ class RtiAdConfigFlow(ConfigFlow, domain=DOMAIN):
                     CONF_HOST: host,
                     CONF_PORT: port,
                     CONF_ZONES: user_input[CONF_ZONES],
+                    CONF_ZONE_DEVICE_CLASS: user_input[CONF_ZONE_DEVICE_CLASS],
                 }
                 self._source_count = user_input[CONF_SOURCE_COUNT]
                 self._current_sources = default_sources(self._source_count)
@@ -193,6 +212,9 @@ class RtiAdConfigFlow(ConfigFlow, domain=DOMAIN):
                 vol.Required(CONF_SOURCE_COUNT, default=DEFAULT_SOURCE_COUNT): vol.All(
                     int, vol.Range(min=MIN_SOURCES, max=MAX_SOURCES)
                 ),
+                vol.Required(
+                    CONF_ZONE_DEVICE_CLASS, default=DEFAULT_ZONE_DEVICE_CLASS
+                ): _ZONE_DEVICE_CLASS_SELECTOR,
             }
         )
         return self.async_show_form(step_id="user", data_schema=schema, errors=errors)
@@ -270,6 +292,7 @@ class RtiAdOptionsFlow(OptionsFlow):
         # matching note on RtiAdConfigFlow.__init__.
         self._zones: int = 0
         self._source_count: int = 0
+        self._device_class: str = DEFAULT_ZONE_DEVICE_CLASS
         self._current_sources: list[Source] = []
 
     async def async_step_init(
@@ -282,6 +305,7 @@ class RtiAdOptionsFlow(OptionsFlow):
         if user_input is not None:
             self._zones = user_input[CONF_ZONES]
             self._source_count = user_input[CONF_SOURCE_COUNT]
+            self._device_class = user_input[CONF_ZONE_DEVICE_CLASS]
             self._current_sources = resize_sources(current_sources, self._source_count)
             # Skip straight to create_entry when there's nothing for the
             # sources step to actually change: the source count didn't move
@@ -294,7 +318,11 @@ class RtiAdOptionsFlow(OptionsFlow):
             ):
                 return self.async_create_entry(
                     title="",
-                    data={CONF_ZONES: self._zones, CONF_SOURCES: current_sources},
+                    data={
+                        CONF_ZONES: self._zones,
+                        CONF_SOURCES: current_sources,
+                        CONF_ZONE_DEVICE_CLASS: self._device_class,
+                    },
                 )
             return await self.async_step_sources()
 
@@ -306,6 +334,12 @@ class RtiAdOptionsFlow(OptionsFlow):
                 vol.Required(CONF_SOURCE_COUNT, default=len(current_sources)): vol.All(
                     int, vol.Range(min=MIN_SOURCES, max=MAX_SOURCES)
                 ),
+                vol.Required(
+                    CONF_ZONE_DEVICE_CLASS,
+                    default=current.get(
+                        CONF_ZONE_DEVICE_CLASS, DEFAULT_ZONE_DEVICE_CLASS
+                    ),
+                ): _ZONE_DEVICE_CLASS_SELECTOR,
                 vol.Optional(CONF_EDIT_SOURCES, default=False): bool,
             }
         )
@@ -321,6 +355,11 @@ class RtiAdOptionsFlow(OptionsFlow):
             self._source_count,
             self._current_sources,
             create_entry=lambda sources: self.async_create_entry(
-                title="", data={CONF_ZONES: self._zones, CONF_SOURCES: sources}
+                title="",
+                data={
+                    CONF_ZONES: self._zones,
+                    CONF_SOURCES: sources,
+                    CONF_ZONE_DEVICE_CLASS: self._device_class,
+                },
             ),
         )
