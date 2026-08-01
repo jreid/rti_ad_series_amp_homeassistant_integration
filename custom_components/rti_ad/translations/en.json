@@ -2,7 +2,6 @@
   "config": {
     "step": {
       "user": {
-        "title": "Connect to RTI AD Series Amplifiers",
         "description": "The amplifier accepts only one connection at a time, so Home Assistant reads its state at startup and then keeps it current from command replies rather than polling.",
         "data": {
           "name": "Name",
@@ -35,7 +34,6 @@
         }
       },
       "reconfigure": {
-        "title": "Update RTI AD Series Amplifiers connection",
         "description": "Update the host or port if the amplifier's network address has changed.",
         "data": {
           "host": "Host or IP address",
@@ -55,7 +53,6 @@
   "options": {
     "step": {
       "init": {
-        "title": "RTI AD Series Amplifiers options",
         "data": {
           "zones": "Number of zones",
           "source_count": "Number of sources",
