@@ -179,7 +179,7 @@ config/
 
 ## Configuration
 
-Settings > Devices & Services > Add Integration > "RTI AD Series Amplifiers".
+Settings > Devices & Services > Add Integration > "RTI AD Series Amplifier".
 You'll be asked for:
 
 - **Name** -- shown as the amplifier's device name; defaults to "RTI AD Series
@@ -253,8 +253,9 @@ pytest tests/
 
 Tests run against the `homeassistant` package (via
 [pytest-homeassistant-custom-component](https://github.com/MatthewFlamm/pytest-homeassistant-custom-component),
-pinned to the release built against this integration's `min_ha_version`) and
-a fake amplifier over a local socket, so no hardware is needed. Most
+pinned to the release built against the minimum Home Assistant version in
+`hacs.json`) and a fake amplifier over a local socket, so no hardware is
+needed. Most
 assertions pin down protocol behaviour that was expensive to discover — the
 bass-before-treble field order, the exact attenuation ceiling, pacing,
 single-client port release, and power gating — plus the coordinator's

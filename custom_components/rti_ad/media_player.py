@@ -1,4 +1,4 @@
-"""Media player entities for the RTI AD Series Amplifiers integration, one per zone."""
+"""Media player entities for the RTI AD Series Amplifier integration, one per zone."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ from homeassistant.components.media_player import (
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_platform
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from . import RtiAdConfigEntry
 from .const import CONF_SOURCES, CONF_ZONES, SERVICE_ALL_ZONES_OFF
@@ -34,8 +34,9 @@ SUPPORTED_FEATURES = (
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: RtiAdConfigEntry,
-    async_add_entities: AddEntitiesCallback,
+    async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
+    """Set up the RTI AD media player platform."""
     coordinator = entry.runtime_data
     sources = normalize_sources(
         entry.options.get(CONF_SOURCES, entry.data[CONF_SOURCES])
@@ -73,6 +74,7 @@ class RtiAdZoneMediaPlayer(RtiAdZoneEntity, MediaPlayerEntity):
         zone: int,
         sources: list[Source],
     ) -> None:
+        """Initialize a zone player, keeping the full source list for lookups."""
         super().__init__(coordinator, entry, zone)
         self._sources = sources
 
@@ -89,6 +91,7 @@ class RtiAdZoneMediaPlayer(RtiAdZoneEntity, MediaPlayerEntity):
 
     @property
     def state(self) -> MediaPlayerState | None:
+        """Return whether the zone is powered on."""
         status = self._status
         if status is None:
             return None
@@ -96,6 +99,7 @@ class RtiAdZoneMediaPlayer(RtiAdZoneEntity, MediaPlayerEntity):
 
     @property
     def volume_level(self) -> float | None:
+        """Return the zone volume, favouring a level not yet sent to the amp."""
         if (pending := self.coordinator.pending_volume(self._zone)) is not None:
             return pending
         status = self._status
@@ -103,6 +107,7 @@ class RtiAdZoneMediaPlayer(RtiAdZoneEntity, MediaPlayerEntity):
 
     @property
     def is_volume_muted(self) -> bool | None:
+        """Return the mute state, favouring one not yet sent to the amp."""
         if (pending := self.coordinator.pending_mute(self._zone)) is not None:
             return pending
         status = self._status
@@ -110,32 +115,41 @@ class RtiAdZoneMediaPlayer(RtiAdZoneEntity, MediaPlayerEntity):
 
     @property
     def source(self) -> str | None:
+        """Return the name of the source the zone is currently on."""
         status = self._status
         return self._source_name(status.source) if status else None
 
     @property
     def source_list(self) -> list[str]:
+        """Return only the sources the user left enabled."""
         return [s["name"] for s in self._sources if s["enabled"]]
 
     async def async_turn_on(self) -> None:
+        """Power the zone on, applying anything deferred while it was off."""
         await self.coordinator.async_set_power(self._zone, True)
 
     async def async_turn_off(self) -> None:
+        """Power the zone off."""
         await self.coordinator.async_set_power(self._zone, False)
 
     async def async_set_volume_level(self, volume: float) -> None:
+        """Set the zone to an absolute volume level."""
         await self.coordinator.async_set_volume(self._zone, volume)
 
     async def async_volume_up(self) -> None:
+        """Raise the zone volume by one 1 dB step."""
         await self.coordinator.async_step_volume(self._zone, 1)
 
     async def async_volume_down(self) -> None:
+        """Lower the zone volume by one 1 dB step."""
         await self.coordinator.async_step_volume(self._zone, -1)
 
     async def async_mute_volume(self, mute: bool) -> None:
+        """Mute or unmute the zone."""
         await self.coordinator.async_set_mute(self._zone, mute)
 
     async def async_select_source(self, source: str) -> None:
+        """Switch the zone to the named source, ignoring an unknown name."""
         # Looked up against the full list, not just the enabled subset, so
         # the physical source number sent to the amplifier is unaffected by
         # which sources are currently hidden from the dropdown.

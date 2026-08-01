@@ -1,4 +1,4 @@
-"""Data update coordinator for the RTI AD Series Amplifiers integration."""
+"""Data update coordinator for the RTI AD Series Amplifier integration."""
 
 from __future__ import annotations
 
@@ -90,6 +90,7 @@ class RtiAdCoordinator(DataUpdateCoordinator[dict[int, ZoneData]]):
         client: RtiAdClient,
         zones: list[int],
     ) -> None:
+        """Set up per-zone pending state for the amplifier `client` talks to."""
         super().__init__(
             hass,
             _LOGGER,
@@ -221,14 +222,17 @@ class RtiAdCoordinator(DataUpdateCoordinator[dict[int, ZoneData]]):
         await self._async_flush_soon(zone)
 
     async def async_set_mute(self, zone: int, mute: bool) -> None:
+        """Mute or unmute a zone; last writer within the window wins."""
         self._pending[zone].mute = mute
         await self._async_flush_soon(zone)
 
     async def async_set_treble(self, zone: int, db: int) -> None:
+        """Set a zone's treble in dB; last writer within the window wins."""
         self._pending[zone].treble = db
         await self._async_flush_soon(zone)
 
     async def async_set_bass(self, zone: int, db: int) -> None:
+        """Set a zone's bass in dB; last writer within the window wins."""
         self._pending[zone].bass = db
         await self._async_flush_soon(zone)
 
@@ -245,16 +249,20 @@ class RtiAdCoordinator(DataUpdateCoordinator[dict[int, ZoneData]]):
     # snapping back while the zone is off.
 
     def pending_volume(self, zone: int) -> float | None:
+        """Return the volume level a zone is heading for, if one is queued."""
         pending = self._pending[zone]
         return pending.volume_target if pending.volume_dirty else None
 
     def pending_mute(self, zone: int) -> bool | None:
+        """Return the mute state queued for a zone, if any."""
         return self._pending[zone].mute
 
     def pending_treble(self, zone: int) -> int | None:
+        """Return the treble level queued for a zone, if any."""
         return self._pending[zone].treble
 
     def pending_bass(self, zone: int) -> int | None:
+        """Return the bass level queued for a zone, if any."""
         return self._pending[zone].bass
 
     async def _async_flush_soon(self, zone: int) -> None:

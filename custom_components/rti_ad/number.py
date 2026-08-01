@@ -1,4 +1,4 @@
-"""Treble/bass number entities for the RTI AD Series Amplifiers integration, one pair per zone."""
+"""Treble/bass number entities for the RTI AD Series Amplifier integration, one pair per zone."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from typing import Literal
 
 from homeassistant.components.number import NumberEntity, NumberMode
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from . import RtiAdConfigEntry
 from .const import CONF_ZONES, MAX_TONE_DB, MIN_TONE_DB, TONE_STEP_DB
@@ -21,8 +21,9 @@ ToneKind = Literal["treble", "bass"]
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: RtiAdConfigEntry,
-    async_add_entities: AddEntitiesCallback,
+    async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
+    """Set up the RTI AD number platform."""
     coordinator = entry.runtime_data
     zones: int = entry.options.get(CONF_ZONES, entry.data[CONF_ZONES])
 
@@ -49,12 +50,14 @@ class RtiAdToneNumber(RtiAdZoneEntity, NumberEntity):
         zone: int,
         kind: ToneKind,
     ) -> None:
+        """Initialize the treble or bass control for one zone."""
         super().__init__(coordinator, entry, zone, unique_id_suffix=f"_{kind}")
         self._kind = kind
         self._attr_translation_key = kind
 
     @property
     def native_value(self) -> float | None:
+        """Return the tone level in dB, favouring one not yet sent to the amp."""
         pending = (
             self.coordinator.pending_treble(self._zone)
             if self._kind == "treble"
@@ -69,6 +72,7 @@ class RtiAdToneNumber(RtiAdZoneEntity, NumberEntity):
         return data.tone.treble_db if self._kind == "treble" else data.tone.bass_db
 
     async def async_set_native_value(self, value: float) -> None:
+        """Set treble or bass, rounding the slider's value to whole dB."""
         db = round(value)
         if self._kind == "treble":
             await self.coordinator.async_set_treble(self._zone, db)

@@ -1,4 +1,4 @@
-"""The RTI AD Series Amplifiers integration."""
+"""The RTI AD Series Amplifier integration."""
 
 from __future__ import annotations
 
@@ -17,6 +17,7 @@ type RtiAdConfigEntry = ConfigEntry[RtiAdCoordinator]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: RtiAdConfigEntry) -> bool:
+    """Set up an RTI AD Series amplifier from a config entry."""
     client = RtiAdClient(entry.data[CONF_HOST], entry.data[CONF_PORT])
     zones = entry.options.get(CONF_ZONES, entry.data[CONF_ZONES])
 
@@ -64,6 +65,7 @@ def _async_prune_stale_zone_devices(
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: RtiAdConfigEntry) -> bool:
+    """Unload a config entry, dropping pending work and freeing the control port."""
     unloaded = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if unloaded:
         entry.runtime_data.async_cancel_pending()

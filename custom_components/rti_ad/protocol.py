@@ -1,8 +1,8 @@
-"""Low-level protocol client for the RTI AD-4x/8x audio amplifier family.
+r"""Low-level protocol client for the RTI AD-4x/8x audio amplifier family.
 
 The amplifier accepts ASCII commands over TCP port 23, terminated by a bare
-``\\r``. Every command -- including read-only queries -- replies with a
-status line terminated by ``\\r\\n``:
+``\r``. Every command -- including read-only queries -- replies with a
+status line terminated by ``\r\n``:
 
     #<zone2>,<power0/1>,<mute0/1>,<source2>,<volume_db>
 
@@ -113,6 +113,8 @@ class RtiAdZoneOffError(RtiAdError):
 
 @dataclass
 class ZoneStatus:
+    """A zone's state as carried on the amplifier's ``#`` status line."""
+
     zone: int
     power: bool
     mute: bool
@@ -127,6 +129,8 @@ class ZoneStatus:
 
 @dataclass
 class ToneStatus:
+    """A zone's treble and bass, in dB, as read back on the ``$`` channel."""
+
     zone: int
     treble_db: int
     bass_db: int
@@ -172,7 +176,7 @@ def _describe_failure(err: BaseException | None) -> str:
 
 
 def _is_direct_reply(line: str, expect_zone: int | None) -> bool:
-    """Is this line the answer to our command, rather than a broadcast?
+    """Tell a reply to our command apart from an unsolicited broadcast.
 
     Replies carry no request tag, so the zone in the line is the only thing
     tying it to what we asked. Checking it means a status line for some other
@@ -248,6 +252,7 @@ class RtiAdClient:
     """
 
     def __init__(self, host: str, port: int = DEFAULT_PORT) -> None:
+        """Prepare a client for one amplifier; nothing is connected until used."""
         self._host = host
         self._port = port
         self._lock = asyncio.Lock()
@@ -387,43 +392,53 @@ class RtiAdClient:
         ) from last_err
 
     async def get_status(self, zone: int) -> ZoneStatus:
+        """Read a zone's power, mute, source, and volume."""
         return _parse_status_line(await self._send(f"ZN{zone:02d}STA", zone))
 
     async def power_on(self, zone: int) -> ZoneStatus:
+        """Power a zone on."""
         return _parse_status_line(await self._send(f"ZN{zone:02d}PWR01", zone))
 
     async def power_off(self, zone: int) -> ZoneStatus:
+        """Power a zone off."""
         return _parse_status_line(await self._send(f"ZN{zone:02d}PWR00", zone))
 
     async def set_source(self, zone: int, source: int) -> ZoneStatus:
+        """Select a source by its 1-based physical number, waking the zone."""
         return _parse_status_line(
             await self._send(f"ZN{zone:02d}SRC{source:02d}", zone)
         )
 
     async def set_mute(self, zone: int, mute: bool) -> ZoneStatus:
+        """Mute or unmute a zone; the amplifier ignores this while it is off."""
         return _parse_status_line(
             await self._send(f"ZN{zone:02d}MUT{int(mute):02d}", zone)
         )
 
     async def set_volume_level(self, zone: int, volume_level: float) -> ZoneStatus:
+        """Set volume from a 0.0-1.0 level, waking the zone if it was off."""
         attenuation = volume_level_to_attenuation(volume_level)
         return _parse_status_line(
             await self._send(f"ZN{zone:02d}VOL{attenuation:02d}", zone)
         )
 
     async def volume_up(self, zone: int) -> ZoneStatus:
+        """Raise a zone by one 1 dB step, waking it without changing the level."""
         return _parse_status_line(await self._send(f"ZN{zone:02d}VOLUP", zone))
 
     async def volume_down(self, zone: int) -> ZoneStatus:
+        """Lower a zone by one 1 dB step, waking it without changing the level."""
         return _parse_status_line(await self._send(f"ZN{zone:02d}VOLDN", zone))
 
     async def set_treble(self, zone: int, db: int) -> ToneStatus:
+        """Set treble, snapped to a legal step; raises if the zone is off."""
         cmd_value = db_to_tone_command_value(db)
         return _parse_tone_status_line(
             await self._send(f"ZN{zone:02d}TRB{cmd_value:02d}", zone), "treble"
         )
 
     async def set_bass(self, zone: int, db: int) -> ToneStatus:
+        """Set bass, snapped to a legal step; raises if the zone is off."""
         cmd_value = db_to_tone_command_value(db)
         return _parse_tone_status_line(
             await self._send(f"ZN{zone:02d}BAS{cmd_value:02d}", zone), "bass"

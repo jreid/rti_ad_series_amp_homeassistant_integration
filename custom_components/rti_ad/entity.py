@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from homeassistant.helpers.entity import DeviceInfo
+from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import RtiAdConfigEntry
@@ -23,6 +23,7 @@ class RtiAdZoneEntity(CoordinatorEntity[RtiAdCoordinator]):
         *,
         unique_id_suffix: str = "",
     ) -> None:
+        """Attach the entity to its zone device under the amp hub device."""
         super().__init__(coordinator)
         self._zone = zone
         self._attr_unique_id = f"{entry.entry_id}_zone_{zone}{unique_id_suffix}"
