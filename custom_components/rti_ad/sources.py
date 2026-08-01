@@ -14,15 +14,19 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class Source(TypedDict):
+    """One physical input: its display name and whether zones may select it."""
+
     name: str
     enabled: bool
 
 
 def default_source(index: int) -> Source:
+    """Build an enabled source named after its 1-based physical position."""
     return {"name": f"Source {index}", "enabled": True}
 
 
 def default_sources(count: int) -> list[Source]:
+    """Build `count` enabled sources with default names."""
     return [default_source(i) for i in range(1, count + 1)]
 
 

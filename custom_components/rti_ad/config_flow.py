@@ -90,8 +90,11 @@ async def _async_step_sources(
     *,
     create_entry: Callable[[list[Source]], ConfigFlowResult],
 ) -> ConfigFlowResult:
-    """The per-source name/enabled step, identical between the config and
-    options flows except for what async_create_entry is called with."""
+    """Run the per-source name/enabled step.
+
+    Shared by the config and options flows, which differ only in what
+    `create_entry` ends up calling async_create_entry with.
+    """
     errors: dict[str, str] = {}
 
     if user_input is not None:
@@ -122,7 +125,7 @@ async def _resolve_unique_id(hass: HomeAssistant, host: str, port: int) -> str:
 def _conflicting_entry(
     hass: HomeAssistant, unique_id: str, *, exclude_entry_id: str | None = None
 ) -> bool:
-    """Does some *other* config entry already claim this identity?
+    """Report whether some *other* config entry already claims this identity.
 
     Written directly against `hass.config_entries.async_entries` rather than
     the `_abort_if_unique_id_configured`/`_abort_if_unique_id_mismatch`
@@ -143,6 +146,7 @@ class RtiAdConfigFlow(ConfigFlow, domain=DOMAIN):
     VERSION = 1
 
     def __init__(self) -> None:
+        """Declare the state carried between the user and sources steps."""
         super().__init__()
         # Carried from async_step_user to async_step_sources. Declared here
         # (rather than only appearing as a side effect of async_step_user
@@ -157,6 +161,7 @@ class RtiAdConfigFlow(ConfigFlow, domain=DOMAIN):
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
+        """Collect the amplifier's address along with zone and source counts."""
         errors: dict[str, str] = {}
 
         if user_input is not None:
@@ -195,6 +200,7 @@ class RtiAdConfigFlow(ConfigFlow, domain=DOMAIN):
     async def async_step_sources(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
+        """Name and enable the sources, then create the config entry."""
         return await _async_step_sources(
             self,
             user_input,
@@ -250,6 +256,7 @@ class RtiAdConfigFlow(ConfigFlow, domain=DOMAIN):
     @staticmethod
     @callback
     def async_get_options_flow(config_entry: ConfigEntry) -> OptionsFlow:
+        """Get the options flow for this handler."""
         return RtiAdOptionsFlow()
 
 
@@ -257,6 +264,7 @@ class RtiAdOptionsFlow(OptionsFlow):
     """Allow editing zone count, source count, and per-source name/enabled after setup."""
 
     def __init__(self) -> None:
+        """Declare the state carried between the init and sources steps."""
         super().__init__()
         # Carried from async_step_init to async_step_sources; see the
         # matching note on RtiAdConfigFlow.__init__.
@@ -267,6 +275,7 @@ class RtiAdOptionsFlow(OptionsFlow):
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
+        """Edit the zone and source counts, and offer the sources step."""
         current = {**self.config_entry.data, **self.config_entry.options}
         current_sources = normalize_sources(current[CONF_SOURCES])
 
@@ -305,6 +314,7 @@ class RtiAdOptionsFlow(OptionsFlow):
     async def async_step_sources(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
+        """Rename or re-enable sources, then write the updated options."""
         return await _async_step_sources(
             self,
             user_input,

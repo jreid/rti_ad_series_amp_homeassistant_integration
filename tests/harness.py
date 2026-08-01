@@ -2,7 +2,7 @@
 
 Home Assistant itself comes from `pytest-homeassistant-custom-component`
 (see requirements_test.txt, pinned to the release built against the exact
-`homeassistant` version this integration declares as its `min_ha_version`),
+`homeassistant` version `hacs.json` declares as this integration's minimum),
 so `custom_components/rti_ad`'s own `from homeassistant... import ...` lines
 resolve the same way they would inside an HA install.
 
