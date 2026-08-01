@@ -3,10 +3,10 @@
   "name": "RTI AD Series Amplifier",
   "codeowners": ["@jreid"],
   "config_flow": true,
-  "documentation": "https://github.com/jreid/rti_ad_series_amp_homeassistant_integration",
+  "documentation": "https://github.com/jreid/homeassistant-rti-ad-series",
   "integration_type": "device",
   "iot_class": "local_polling",
-  "issue_tracker": "https://github.com/jreid/rti_ad_series_amp_homeassistant_integration/issues",
+  "issue_tracker": "https://github.com/jreid/homeassistant-rti-ad-series/issues",
   "requirements": [],
-  "version": "0.1.0"
+  "version": "0.2.0"
 }
