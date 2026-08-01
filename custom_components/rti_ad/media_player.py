@@ -12,9 +12,8 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_platform
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
-from . import RtiAdConfigEntry
 from .const import CONF_SOURCES, CONF_ZONES, SERVICE_ALL_ZONES_OFF
-from .coordinator import RtiAdCoordinator
+from .coordinator import RtiAdConfigEntry, RtiAdCoordinator
 from .entity import RtiAdZoneEntity
 from .protocol import ZoneStatus
 from .sources import Source, normalize_sources

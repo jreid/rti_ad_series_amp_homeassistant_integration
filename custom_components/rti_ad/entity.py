@@ -5,9 +5,8 @@ from __future__ import annotations
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from . import RtiAdConfigEntry
 from .const import DOMAIN
-from .coordinator import RtiAdCoordinator
+from .coordinator import RtiAdConfigEntry, RtiAdCoordinator
 
 
 class RtiAdZoneEntity(CoordinatorEntity[RtiAdCoordinator]):

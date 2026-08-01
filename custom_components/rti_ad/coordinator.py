@@ -7,6 +7,7 @@ import logging
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, replace
 
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
@@ -21,6 +22,10 @@ from .protocol import (
 )
 
 _LOGGER = logging.getLogger(__name__)
+
+# Lives here rather than in __init__.py so the platform modules can reach the
+# coordinator's type without importing back through the package root.
+type RtiAdConfigEntry = ConfigEntry[RtiAdCoordinator]
 
 
 @dataclass(frozen=True)
@@ -156,7 +161,11 @@ class RtiAdCoordinator(DataUpdateCoordinator[dict[int, ZoneData]]):
             try:
                 status = await action(zone, *args)
             except RtiAdError as err:
-                raise HomeAssistantError(f"Zone {zone}: {err}") from err
+                raise HomeAssistantError(
+                    translation_domain=DOMAIN,
+                    translation_key="zone_command_failed",
+                    translation_placeholders={"zone": str(zone), "error": str(err)},
+                ) from err
         data = dict(self.data or {})
         existing = data.get(zone)
         data[zone] = (
@@ -180,7 +189,9 @@ class RtiAdCoordinator(DataUpdateCoordinator[dict[int, ZoneData]]):
                 await self.client.all_zones_off()
             except RtiAdError as err:
                 raise HomeAssistantError(
-                    f"Could not turn off all zones: {err}"
+                    translation_domain=DOMAIN,
+                    translation_key="all_zones_off_failed",
+                    translation_placeholders={"error": str(err)},
                 ) from err
         data = {
             zone: replace(entry, status=replace(entry.status, power=False))
@@ -280,7 +291,11 @@ class RtiAdCoordinator(DataUpdateCoordinator[dict[int, ZoneData]]):
         # other callers are also waiting on.
         await asyncio.shield(self._flush_task)
         if (err := self._flush_errors.pop(zone, None)) is not None:
-            raise HomeAssistantError(f"Zone {zone}: {err}") from err
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="zone_adjustment_failed",
+                translation_placeholders={"zone": str(zone), "error": str(err)},
+            ) from err
 
     async def _async_flush(self) -> None:
         await asyncio.sleep(COMMAND_COALESCE_WINDOW)

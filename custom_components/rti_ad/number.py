@@ -8,9 +8,8 @@ from homeassistant.components.number import NumberEntity, NumberMode
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
-from . import RtiAdConfigEntry
 from .const import CONF_ZONES, MAX_TONE_DB, MIN_TONE_DB, TONE_STEP_DB
-from .coordinator import RtiAdCoordinator
+from .coordinator import RtiAdConfigEntry, RtiAdCoordinator
 from .entity import RtiAdZoneEntity
 
 PARALLEL_UPDATES = 1

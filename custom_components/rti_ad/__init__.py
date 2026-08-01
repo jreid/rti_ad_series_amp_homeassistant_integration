@@ -8,18 +8,16 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 
 from .const import CONF_ZONES, DOMAIN
-from .coordinator import RtiAdCoordinator
+from .coordinator import RtiAdConfigEntry, RtiAdCoordinator
 from .protocol import RtiAdClient
 
 PLATFORMS = [Platform.MEDIA_PLAYER, Platform.NUMBER, Platform.BUTTON]
-
-type RtiAdConfigEntry = ConfigEntry[RtiAdCoordinator]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: RtiAdConfigEntry) -> bool:
     """Set up an RTI AD Series amplifier from a config entry."""
     client = RtiAdClient(entry.data[CONF_HOST], entry.data[CONF_PORT])
-    zones = entry.options.get(CONF_ZONES, entry.data[CONF_ZONES])
+    zones = _configured_zones(entry)
 
     coordinator = RtiAdCoordinator(hass, client, zones=list(range(1, zones + 1)))
     # The only unconditional read: everything after this is driven by command
@@ -52,16 +50,50 @@ async def async_setup_entry(hass: HomeAssistant, entry: RtiAdConfigEntry) -> boo
     return True
 
 
+def _configured_zones(entry: RtiAdConfigEntry) -> int:
+    """Return the zone count in force, preferring an options-flow override."""
+    zones: int = entry.options.get(CONF_ZONES, entry.data[CONF_ZONES])
+    return zones
+
+
+def _zone_device_identifiers(entry_id: str, zones: int) -> set[tuple[str, str]]:
+    """Return the device identifiers of the zones a config entry currently covers."""
+    return {(DOMAIN, f"{entry_id}_zone_{z}") for z in range(1, zones + 1)}
+
+
 def _async_prune_stale_zone_devices(
     device_registry: dr.DeviceRegistry, entry_id: str, zones: int
 ) -> None:
     """Remove zone devices (and their entities) left behind by a lower zone count."""
-    valid = {(DOMAIN, f"{entry_id}_zone_{z}") for z in range(1, zones + 1)}
+    valid = _zone_device_identifiers(entry_id, zones)
     for device in dr.async_entries_for_config_entry(device_registry, entry_id):
         if (DOMAIN, entry_id) in device.identifiers:
             continue  # the amp hub device itself
         if not device.identifiers & valid:
             device_registry.async_remove_device(device.id)
+
+
+async def async_remove_config_entry_device(
+    hass: HomeAssistant,
+    config_entry: RtiAdConfigEntry,
+    device_entry: dr.DeviceEntry,
+) -> bool:
+    """Decide whether the user may delete a device from this config entry.
+
+    Lowering the zone count on reload already prunes what it orphans, but a
+    device can also outlive that -- renamed, or left behind by an entry that
+    was reloaded while the registry held an older shape -- so the same
+    in-range test is offered on demand from the device page.
+
+    The amp hub device is the config entry made visible: deleting the entry
+    is how it goes away, so it is never removable on its own.
+    """
+    if (DOMAIN, config_entry.entry_id) in device_entry.identifiers:
+        return False
+    valid = _zone_device_identifiers(
+        config_entry.entry_id, _configured_zones(config_entry)
+    )
+    return not device_entry.identifiers & valid
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: RtiAdConfigEntry) -> bool:
