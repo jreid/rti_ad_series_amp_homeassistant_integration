@@ -55,7 +55,6 @@ def _user_input(**overrides):
         "port": 23,
         "zones": 2,
         "source_count": 2,
-        "zone_device_class": "speaker",
     }
     data.update(overrides)
     return data
@@ -231,29 +230,6 @@ async def test_user_step_does_not_treat_a_different_amp_as_a_duplicate(
     assert result["step_id"] == "sources"
 
 
-async def test_user_step_defaults_zone_device_class_to_speaker(hass):
-    result = await hass.config_entries.flow.async_init(
-        const.DOMAIN, context={"source": "user"}
-    )
-    assert _schema_default(result["data_schema"], "zone_device_class") == "speaker"
-
-
-async def test_zone_device_class_is_carried_through_to_the_created_entry(
-    hass, monkeypatch
-):
-    monkeypatch.setattr(cf, "_validate_connection", _ok_validate)
-    result = await hass.config_entries.flow.async_init(
-        const.DOMAIN,
-        context={"source": "user"},
-        data=_user_input(zone_device_class="receiver"),
-    )
-    result = await hass.config_entries.flow.async_configure(
-        result["flow_id"],
-        _sources_input([("Chromecast", True), ("Turntable", True)]),
-    )
-    assert result["data"]["zone_device_class"] == "receiver"
-
-
 # --------------------------------------------------------------------------
 # async_step_reconfigure (#10: a changed host/port shouldn't force delete-and-readd)
 # --------------------------------------------------------------------------
@@ -345,7 +321,6 @@ async def test_options_flow_skips_the_sources_step_when_nothing_about_it_changed
             {"name": "A", "enabled": True},
             {"name": "B", "enabled": True},
         ],
-        "zone_device_class": "speaker",
     }
 
 
@@ -380,7 +355,6 @@ async def test_options_flow_updates_zones_and_sources(hass):
             {"name": "A", "enabled": True},
             {"name": "B", "enabled": True},
         ],
-        "zone_device_class": "speaker",
     }
 
 
@@ -425,30 +399,6 @@ async def test_options_flow_shrinking_source_count_drops_the_trailing_rows(hass)
     )
     assert result["type"] == "create_entry"
     assert entry.options["sources"] == [{"name": "A", "enabled": True}]
-
-
-async def test_options_flow_updates_zone_device_class(hass):
-    entry = _existing_entry()
-    entry.add_to_hass(hass)
-    result = await hass.config_entries.options.async_init(entry.entry_id)
-    result = await hass.config_entries.options.async_configure(
-        result["flow_id"],
-        {"zones": 2, "source_count": 2, "zone_device_class": "receiver"},
-    )
-    assert result["type"] == "create_entry"
-    assert entry.options["zone_device_class"] == "receiver"
-
-
-async def test_options_flow_shows_speaker_as_default_zone_device_class_for_a_legacy_entry(
-    hass,
-):
-    # _existing_entry() has no "zone_device_class" key at all, matching an
-    # entry created before this option existed -- distinct from the key
-    # being explicitly set to "speaker".
-    entry = _existing_entry()
-    entry.add_to_hass(hass)
-    result = await hass.config_entries.options.async_init(entry.entry_id)
-    assert _schema_default(result["data_schema"], "zone_device_class") == "speaker"
 
 
 async def test_options_flow_accepts_a_legacy_string_source_list(hass):
