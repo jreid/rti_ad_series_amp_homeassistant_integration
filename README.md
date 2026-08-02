@@ -188,18 +188,15 @@ You'll be asked for:
 - **Port** -- defaults to 23.
 - **Number of zones** -- 1-8.
 - **Number of sources** -- 1-8.
-- **Apple Home / HomeKit zone type** -- Speaker (default) or Receiver; see
-  [Apple Home / HomeKit](#apple-home--homekit) below.
 
 A second step then shows one name + enabled row per source (e.g.
 `Chromecast`, `Turntable`, `AUX`, `Radio`). Unchecking a source hides it from
 every zone's source dropdown without losing its slot or renumbering the
 others -- useful for a source that's wired but not currently in use.
 
-Zone count, source count, the Apple Home / HomeKit zone type, and
-per-source names/enabled state can all be changed later from the
-integration's Configure button without removing it; lowering the zone count
-removes the now-unused zone devices and entities.
+Zone count, source count, and per-source names/enabled state can all be
+changed later from the integration's Configure button without removing it;
+lowering the zone count removes the now-unused zone devices and entities.
 Configure only asks for the source-naming step again when the source count
 actually changes, or when you tick "Edit source names and enabled state" --
 a zones-only change applies immediately without having to page through and
@@ -249,8 +246,9 @@ target:
 
 ## Apple Home / HomeKit
 
-Getting these entities into Apple Home means running Home Assistant's
-`homekit` integration (a "bridge") with these steps in mind:
+Zones are exposed as Speaker-class media players. Getting them into Apple
+Home means running Home Assistant's `homekit` integration (a "bridge") with
+these points in mind:
 
 - **The bridge's domain filter must include `media_player` (and `button`,
   for `button.all_zones_off`)**. Home Assistant's `homekit` integration only
@@ -261,16 +259,60 @@ Getting these entities into Apple Home means running Home Assistant's
 - **`number.treble`/`number.bass` can never appear in Apple Home.** HomeKit
   has no accessory type for a generic numeric slider, so these two entities
   are always skipped by the bridge regardless of configuration.
-- **The zone type setting controls how much of a zone shows up.** Speaker
-  (the default) becomes a simple Power switch and Mute switch in Apple
-  Home -- no volume slider, no source picker, but it's compatible with a
-  normal shared HomeKit bridge. Receiver becomes a proper Apple Home tile
-  with a volume slider and a source picker, but HomeKit requires
-  Receiver-class media players to be paired as their own accessory rather
-  than through a shared bridge. If your bridge has "Enable accessory mode
-  entities" disabled (the more common setup), a zone configured as Receiver
-  will simply be missing from that bridge -- you'd need a second `homekit`
-  integration entry, in accessory mode, limited to that one zone entity.
+- **Each zone becomes a Power switch and a Mute switch** on a normal shared
+  bridge -- no volume slider and no source picker in the Home app. To drop
+  the redundant Mute switch, pin the zone's feature list on the bridge's
+  config entry:
+
+  ```json
+  "entity_config": {
+    "media_player.deck_speakers": {"feature_list": ["on_off"]}
+  }
+  ```
+
+  Home Assistant derives the feature list from `supported_features` and adds
+  a Mute switch for anything advertising `VOLUME_MUTE`; an explicit
+  `feature_list` overrides that. Note there is no UI for this -- the bridge's
+  options flow only exposes `entity_config` for cameras -- and YAML can only
+  target a bridge it created itself, so on a UI-created bridge this means
+  editing `.storage/core.config_entries` with Home Assistant stopped.
+
+### Accessories are labelled "Power", not the zone name
+
+Once a zone is reduced to its single Power switch, every zone shows up in the
+Home app as a tile named "Power" rather than "Deck Speakers". This is a Home
+Assistant limitation with no workaround from this integration's side.
+
+Home Assistant gives each media player feature switch two names: `Name`,
+which is `"{friendly_name} Power"`, and `ConfiguredName`, which is the bare
+mode label -- `"Power"`, with the entity name dropped entirely. The Home app
+prefers `ConfiguredName`. With two switches per accessory the bare labels
+read fine, because they sit nested under a tile named after the zone; with a
+single switch the Home app collapses the accessory to one tile and the zone
+name is lost.
+
+Nothing this integration controls reaches that string -- not the entity name,
+not `device_class`, not `supported_features`. Dropping `VOLUME_MUTE` here
+would produce the same single tile still labelled "Power".
+
+Exposing zone power as a `switch` entity *would* avoid it, since Home
+Assistant's Switch accessory sets no service-level name and so inherits the
+entity's friendly name. That is deliberately not done: it means shipping a
+second entity per zone that duplicates a control the media player already
+provides, which is exactly what Home Assistant's own quality guidelines warn
+against. Rename the four tiles in the Home app instead -- the controller-side
+name takes precedence and persists.
+
+There is deliberately no option to expose zones as Receiver-class instead.
+Receiver was tried and removed: HomeKit forces Receiver-class media players
+to be paired as their own accessory rather than through a shared bridge (one
+extra pairing per zone), and in exchange Apple's own Home app still renders
+no volume slider -- it only draws power and the source picker. Home
+Assistant does publish an absolute `Volume` characteristic for such an
+accessory, but the stock Home app ignores it, so the extra pairings buy
+nothing. Volume remains available to Siri, the Shortcuts app, and
+third-party HomeKit clients (Eve, Controller for HomeKit) via the Home
+Assistant entity itself.
 
 ## Tests
 
